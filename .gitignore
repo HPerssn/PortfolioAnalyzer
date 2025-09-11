@@ -15,11 +15,32 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Multi-project specific build outputs
+*/bin/
+*/obj/
+PortfolioAnalyzer.Core/bin/
+PortfolioAnalyzer.Core/obj/
+PortfolioAnalyzer.Console/bin/
+PortfolioAnalyzer.Console/obj/
+PortfolioAnalyzer.Api/bin/
+PortfolioAnalyzer.Api/obj/
+PortfolioAnalyzer.Tests/bin/
+PortfolioAnalyzer.Tests/obj/
+
+# Test Results
+TestResults/
+*.trx
+*.coverage
+coverage/
+
 # Visual Studio
 .vs/
 .vscode/settings.json
 .vscode/tasks.json
 .vscode/launch.json
+
+# JetBrains Rider
+.idea/
 
 # Python
 __pycache__/
@@ -34,20 +55,44 @@ env.bak/
 venv.bak/
 
 # IDE
-.idea/
 *.swp
 *.swo
 *~
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Application data (but keep example configs)
 *.log
 temp/
+logs/
 
 # Sensitive data
 *.key
 *.secret
 config/secrets/
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
+# Development databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Node modules (for future frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist/
+build/
+out/
