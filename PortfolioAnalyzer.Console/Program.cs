@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using PortfolioAnalyzer.Core.Models;
+using PortfolioAnalyzer.Core.Services;
+using PortfolioAnalyzer.Core.Data;
 
 public class AssetConfig
 {
@@ -90,6 +93,8 @@ class Program
                 if (asset.HistoricalPrices.Any())
                 {
                     tickerConfig.PurchasePrice = asset.HistoricalPrices.First();
+                    asset.AverageCost = asset.HistoricalPrices.First(); // Set purchase price as average cost
+                    asset.CurrentPrice = asset.HistoricalPrices.Last(); // Set latest price as current price
                 }
 
                 // Add the asset to the portfolio

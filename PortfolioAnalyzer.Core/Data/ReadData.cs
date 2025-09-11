@@ -6,16 +6,18 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-public class PriceRecord
+namespace PortfolioAnalyzer.Core.Data
 {
-    [JsonPropertyName("Date")]
-    public required string Date { get; set; }
-    
-    [JsonPropertyName("Close")]
-    public decimal Close { get; set; }
-}
+    public class PriceRecord
+    {
+        [JsonPropertyName("Date")]
+        public required string Date { get; set; }
+        
+        [JsonPropertyName("Close")]
+        public decimal Close { get; set; }
+    }
 
-public static class ReadData
+    public static class ReadData
 {
     /// <summary>
     /// Calls the Python fetch_prices.py script and returns a list of PriceRecord.
@@ -37,7 +39,7 @@ public static class ReadData
         }
         
         var pythonPath = Path.Combine(rootDir, "venv", "bin", "python");
-        var scriptPath = Path.Combine(rootDir, "Data", "FetchData.py");
+        var scriptPath = Path.Combine(rootDir, "PortfolioAnalyzer.Core", "Data", "FetchData.py");
         
         var psi = new ProcessStartInfo
         {
@@ -69,4 +71,4 @@ public static class ReadData
             return prices;
         }
     }
-}
+}}

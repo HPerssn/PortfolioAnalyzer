@@ -3,170 +3,91 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using PortfolioAnalyzer.Core.Models;
 
-public class ConfigurationService
+namespace PortfolioAnalyzer.Core.Services
 {
-    private readonly string _configDirectory;
-    private const string DefaultConfigFileName = "portfolio.json";
-
-    public ConfigurationService(string? configDirectory = null)
+    public class ConfigurationService
     {
-        _configDirectory = configDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PortfolioAnalyzer");
-        
-        // Ensure directory exists
-        if (!Directory.Exists(_configDirectory))
-        {
-            Directory.CreateDirectory(_configDirectory);
-        }
-    }
+        private readonly string _configDirectory;
 
-    public async Task<PortfolioConfiguration> LoadConfigurationAsync(string? fileName = null)
-    {
-        var filePath = Path.Combine(_configDirectory, fileName ?? DefaultConfigFileName);
-        
-        if (!File.Exists(filePath))
+        public ConfigurationService()
         {
-            // Return default configuration if file doesn't exist
-            return CreateDefaultConfiguration();
-        }
-
-        try
-        {
-            var jsonString = await File.ReadAllTextAsync(filePath);
-            var options = new JsonSerializerOptions
+            _configDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".portfolioanalyzer");
+            if (!Directory.Exists(_configDirectory))
             {
-                PropertyNameCaseInsensitive = true,
-                WriteIndented = true
-            };
-            
-            var config = JsonSerializer.Deserialize<PortfolioConfiguration>(jsonString, options);
-            return config ?? CreateDefaultConfiguration();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading configuration: {ex.Message}");
-            return CreateDefaultConfiguration();
-        }
-    }
-
-    public async Task SaveConfigurationAsync(PortfolioConfiguration config, string? fileName = null)
-    {
-        var filePath = Path.Combine(_configDirectory, fileName ?? DefaultConfigFileName);
-        
-        try
-        {
-            config.LastUpdated = DateTime.Now;
-            
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                WriteIndented = true
-            };
-            
-            var jsonString = JsonSerializer.Serialize(config, options);
-            await File.WriteAllTextAsync(filePath, jsonString);
-            
-            Console.WriteLine($"Configuration saved to: {filePath}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving configuration: {ex.Message}");
-        }
-    }
-
-    public List<string> GetAvailableConfigurations()
-    {
-        var configurations = new List<string>();
-        
-        try
-        {
-            var jsonFiles = Directory.GetFiles(_configDirectory, "*.json");
-            foreach (var file in jsonFiles)
-            {
-                configurations.Add(Path.GetFileNameWithoutExtension(file));
+                Directory.CreateDirectory(_configDirectory);
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error listing configurations: {ex.Message}");
-        }
-        
-        return configurations;
-    }
 
-    public Portfolio ConvertToPortfolio(PortfolioConfiguration config)
-    {
-        var portfolio = new Portfolio
+        public string GetConfigDirectory()
         {
-            Cash = config.CashBalance
-        };
-
-        foreach (var tickerConfig in config.Tickers)
-        {
-            var asset = new Asset(tickerConfig.Symbol, tickerConfig.PurchaseDate)
-            {
-                Quantity = tickerConfig.Quantity,
-                HistoricalPrices = tickerConfig.HistoricalPrices
-            };
-            
-            portfolio.AddAsset(asset);
+            return _configDirectory;
         }
 
-        return portfolio;
-    }
-
-    public PortfolioConfiguration ConvertFromPortfolio(Portfolio portfolio, string name = "My Portfolio")
-    {
-        var config = new PortfolioConfiguration
+        public async Task<PortfolioConfiguration?> LoadConfigurationAsync(string filename)
         {
-            Name = name,
-            CashBalance = portfolio.Cash,
-            CreatedDate = DateTime.Now,
-            LastUpdated = DateTime.Now
-        };
+            var filePath = Path.Combine(_configDirectory, filename);
+            if (!File.Exists(filePath))
+                return null;
 
-        foreach (var asset in portfolio.Assets)
-        {
-            var tickerConfig = new TickerConfig
-            {
-                Symbol = asset.Symbol,
-                Quantity = asset.Quantity,
-                PurchaseDate = asset.PurchaseDate,
-                HistoricalPrices = asset.HistoricalPrices,
-                PurchasePrice = asset.HistoricalPrices.FirstOrDefault()
-            };
-            
-            config.Tickers.Add(tickerConfig);
+            var json = await File.ReadAllTextAsync(filePath);
+            return JsonSerializer.Deserialize<PortfolioConfiguration>(json);
         }
 
-        return config;
-    }
-
-    private PortfolioConfiguration CreateDefaultConfiguration()
-    {
-        return new PortfolioConfiguration
+        public async Task SaveConfigurationAsync(PortfolioConfiguration config, string filename)
         {
-            Name = "Default Portfolio",
-            Description = "Default portfolio with AAPL and GOOG",
-            Tickers = new List<TickerConfig>
+            var filePath = Path.Combine(_configDirectory, filename);
+            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(filePath, json);
+        }
+
+        public List<string> GetAvailableConfigurations()
+        {
+            var configs = new List<string>();
+            if (Directory.Exists(_configDirectory))
             {
-                new TickerConfig
+                var files = Directory.GetFiles(_configDirectory, "*.json");
+                foreach (var file in files)
                 {
-                    Symbol = "AAPL",
-                    Quantity = 10,
-                    PurchaseDate = new DateTime(2024, 1, 1),
-                    Notes = "Apple Inc."
-                },
-                new TickerConfig
-                {
-                    Symbol = "GOOG",
-                    Quantity = 10,
-                    PurchaseDate = new DateTime(2024, 1, 1),
-                    Notes = "Alphabet Inc."
+                    configs.Add(Path.GetFileNameWithoutExtension(file));
                 }
             }
-        };
-    }
+            return configs;
+        }
 
-    public string GetConfigDirectory() => _configDirectory;
+        public PortfolioConfiguration ConvertFromPortfolio(Portfolio portfolio, string? name = null)
+        {
+            var config = new PortfolioConfiguration
+            {
+                Name = name ?? "Generated Configuration",
+                Tickers = new List<TickerConfig>()
+            };
+
+            foreach (var asset in portfolio.Assets)
+            {
+                config.Tickers.Add(new TickerConfig
+                {
+                    Symbol = asset.Symbol,
+                    Quantity = asset.Quantity,
+                    Shares = asset.Shares,
+                    PurchaseDate = asset.PurchaseDate,
+                    HistoricalPrices = asset.HistoricalPrices
+                });
+            }
+
+            return config;
+        }
+
+        public List<Asset> GetSampleAssets()
+        {
+            // Return sample assets with some realistic data
+            return new List<Asset>
+            {
+                new Asset("AAPL", 10, 150.00m) { CurrentPrice = 175.50m },
+                new Asset("GOOGL", 5, 2500.00m) { CurrentPrice = 2750.00m },
+                new Asset("MSFT", 8, 300.00m) { CurrentPrice = 350.00m }
+            };
+        }
+    }
 }
