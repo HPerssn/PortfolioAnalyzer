@@ -21,8 +21,7 @@ namespace PortfolioAnalyzer.Core.Services
             
             foreach (var asset in _portfolio.Assets)
             {
-                var effectiveShares = asset.Shares > 0 ? asset.Shares : asset.Quantity;
-                Console.WriteLine($"{asset.Symbol}: {effectiveShares} shares @ ${asset.CurrentPrice:F2} = ${asset.GetCurrentValue():F2}");
+                Console.WriteLine($"{asset.Symbol}: {asset.Quantity} shares @ ${asset.CurrentPrice:F2} = ${asset.GetCurrentValue():F2}");
             }
             
             Console.WriteLine($"\nTotal Portfolio Value: ${_portfolio.GetTotalValue():F2}");
@@ -48,7 +47,6 @@ namespace PortfolioAnalyzer.Core.Services
                 Console.WriteLine("\nIndividual Asset Performance:");
                 foreach (var asset in _portfolio.Assets)
                 {
-                    var effectiveShares = asset.Shares > 0 ? asset.Shares : asset.Quantity;
                     Console.WriteLine($"  {asset.Symbol}: {asset.GetReturnPercentage():F2}% return (${asset.GetReturn():F2})");
                 }
             }

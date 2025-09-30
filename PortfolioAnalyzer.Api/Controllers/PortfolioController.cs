@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PortfolioAnalyzer.Core.Services;
+using PortfolioAnalyzer.Core.Models;
 using PortfolioAnalyzer.Api.Services;
 
 namespace PortfolioAnalyzer.Api.Controllers
@@ -9,10 +10,14 @@ namespace PortfolioAnalyzer.Api.Controllers
     public class PortfolioController : ControllerBase
     {
         private readonly RealDataService _dataService;
+        private readonly PortfolioBuilderService _portfolioBuilder;
+        private readonly ConfigurationService _configService;
 
         public PortfolioController()
         {
             _dataService = new RealDataService();
+            _portfolioBuilder = new PortfolioBuilderService();
+            _configService = new ConfigurationService();
         }
 
         /// <summary>
@@ -40,52 +45,40 @@ namespace PortfolioAnalyzer.Api.Controllers
         {
             try
             {
-                // Define some sample holdings
-                var holdings = new[]
+                // Build a sample portfolio (or load from config)
+                // In a real app, this would come from user's saved portfolio or request parameters
+                var sampleTickers = new Dictionary<string, decimal>
                 {
-                    new { Symbol = "AAPL", Shares = 10m, AverageCost = 150.00m },
-                    new { Symbol = "GOOGL", Shares = 5m, AverageCost = 2500.00m },
-                    new { Symbol = "MSFT", Shares = 8m, AverageCost = 300.00m }
+                    { "AAPL", 10m },
+                    { "GOOGL", 5m },
+                    { "MSFT", 8m }
                 };
 
-                decimal totalValue = 0;
-                decimal totalCost = 0;
-                var assets = new List<object>();
+                var portfolio = _portfolioBuilder.BuildFromSymbols(
+                    sampleTickers,
+                    new DateTime(2024, 1, 1)
+                );
 
-                foreach (var holding in holdings)
+                // Build response from portfolio
+                var assets = portfolio.Assets.Select(asset => new
                 {
-                    var currentPrice = _dataService.GetCurrentPrice(holding.Symbol);
-                    var currentValue = holding.Shares * currentPrice;
-                    var cost = holding.Shares * holding.AverageCost;
-                    var returnAmount = currentValue - cost;
-                    var returnPercentage = cost > 0 ? (returnAmount / cost) * 100 : 0;
-
-                    totalValue += currentValue;
-                    totalCost += cost;
-
-                    assets.Add(new
-                    {
-                        Symbol = holding.Symbol,
-                        Shares = holding.Shares,
-                        AverageCost = Math.Round(holding.AverageCost, 2),
-                        CurrentPrice = Math.Round(currentPrice, 2),
-                        TotalCost = Math.Round(cost, 2),
-                        CurrentValue = Math.Round(currentValue, 2),
-                        Return = Math.Round(returnAmount, 2),
-                        ReturnPercentage = Math.Round(returnPercentage, 2)
-                    });
-                }
-
-                var totalReturn = totalValue - totalCost;
-                var totalReturnPercentage = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0;
+                    Symbol = asset.Symbol,
+                    Quantity = asset.Quantity,
+                    AverageCost = Math.Round(asset.AverageCost, 2),
+                    CurrentPrice = Math.Round(asset.CurrentPrice, 2),
+                    TotalCost = Math.Round(asset.GetTotalCost(), 2),
+                    CurrentValue = Math.Round(asset.GetCurrentValue(), 2),
+                    Return = Math.Round(asset.GetReturn(), 2),
+                    ReturnPercentage = Math.Round(asset.GetReturnPercentage(), 2)
+                }).ToList();
 
                 var summary = new
                 {
-                    TotalValue = Math.Round(totalValue, 2),
-                    TotalCost = Math.Round(totalCost, 2),
-                    TotalReturn = Math.Round(totalReturn, 2),
-                    TotalReturnPercentage = Math.Round(totalReturnPercentage, 2),
-                    AssetCount = holdings.Length,
+                    TotalValue = Math.Round(portfolio.GetTotalValue(), 2),
+                    TotalCost = Math.Round(portfolio.GetTotalCost(), 2),
+                    TotalReturn = Math.Round(portfolio.GetTotalReturn(), 2),
+                    TotalReturnPercentage = Math.Round(portfolio.GetTotalReturnPercentage(), 2),
+                    AssetCount = portfolio.Assets.Count,
                     Assets = assets,
                     LastUpdated = DateTime.UtcNow
                 };
@@ -106,35 +99,30 @@ namespace PortfolioAnalyzer.Api.Controllers
         {
             try
             {
-                var holdings = new[]
+                // Build a sample portfolio
+                var sampleTickers = new Dictionary<string, decimal>
                 {
-                    new { Symbol = "AAPL", Shares = 10m, AverageCost = 150.00m },
-                    new { Symbol = "GOOGL", Shares = 5m, AverageCost = 2500.00m },
-                    new { Symbol = "MSFT", Shares = 8m, AverageCost = 300.00m }
+                    { "AAPL", 10m },
+                    { "GOOGL", 5m },
+                    { "MSFT", 8m }
                 };
 
-                var assets = new List<object>();
+                var portfolio = _portfolioBuilder.BuildFromSymbols(
+                    sampleTickers,
+                    new DateTime(2024, 1, 1)
+                );
 
-                foreach (var holding in holdings)
+                var assets = portfolio.Assets.Select(asset => new
                 {
-                    var currentPrice = _dataService.GetCurrentPrice(holding.Symbol);
-                    var currentValue = holding.Shares * currentPrice;
-                    var cost = holding.Shares * holding.AverageCost;
-                    var returnAmount = currentValue - cost;
-                    var returnPercentage = cost > 0 ? (returnAmount / cost) * 100 : 0;
-
-                    assets.Add(new
-                    {
-                        Symbol = holding.Symbol,
-                        Shares = holding.Shares,
-                        AverageCost = Math.Round(holding.AverageCost, 2),
-                        CurrentPrice = Math.Round(currentPrice, 2),
-                        TotalCost = Math.Round(cost, 2),
-                        CurrentValue = Math.Round(currentValue, 2),
-                        Return = Math.Round(returnAmount, 2),
-                        ReturnPercentage = Math.Round(returnPercentage, 2)
-                    });
-                }
+                    Symbol = asset.Symbol,
+                    Quantity = asset.Quantity,
+                    AverageCost = Math.Round(asset.AverageCost, 2),
+                    CurrentPrice = Math.Round(asset.CurrentPrice, 2),
+                    TotalCost = Math.Round(asset.GetTotalCost(), 2),
+                    CurrentValue = Math.Round(asset.GetCurrentValue(), 2),
+                    Return = Math.Round(asset.GetReturn(), 2),
+                    ReturnPercentage = Math.Round(asset.GetReturnPercentage(), 2)
+                }).ToList();
 
                 return Ok(assets);
             }

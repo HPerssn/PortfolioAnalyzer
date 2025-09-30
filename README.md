@@ -5,24 +5,28 @@ A comprehensive portfolio analysis tool built with C# and Python that provides a
 ## Features
 
 ### 📊 Portfolio Analysis
+
 - **Real-time stock data** fetching via Yahoo Finance
 - **Performance metrics**: Total return, annualized return, volatility
 - **Risk analysis**: Sharpe ratio, maximum drawdown, beta calculation
 - **Asset allocation** breakdown with percentages
 
 ### 📈 Benchmark Comparison
+
 - **S&P 500 benchmark** analysis using SPY ETF as proxy
 - **Alpha calculation** (excess return over market)
 - **Beta calculation** (market sensitivity)
 - **Visual performance indicators** (🎉 outperform, 📉 underperform)
 
 ### 💾 Configuration Management
+
 - **Save/load portfolios** as JSON configurations
 - **Persistent storage** in platform-appropriate directories
 - **Multiple portfolio** management
 - **Command-line flexibility** with configuration override
 
 ### 🖥️ Command Line Interface
+
 - **Flexible arguments** for dates, assets, and configurations
 - **Interactive help** system
 - **Cross-platform compatibility** (Windows, macOS, Linux)
@@ -30,6 +34,7 @@ A comprehensive portfolio analysis tool built with C# and Python that provides a
 ## Installation
 
 ### Prerequisites
+
 - **.NET 9.0** or later
 - **Python 3.8+** with pip
 - **Git** (for cloning)
@@ -37,12 +42,14 @@ A comprehensive portfolio analysis tool built with C# and Python that provides a
 ### Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd PortfolioAnalyzer
    ```
 
 2. **Set up Python environment**
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -87,14 +94,14 @@ dotnet run -- -c my-portfolio -a MSFT:10
 
 ### Command Line Options
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `-d, --date` | Purchase date (YYYY-MM-DD) | `-d 2023-06-01` |
-| `-a, --asset` | Add asset (TICKER:QUANTITY) | `-a AAPL:10` |
-| `-c, --config` | Load configuration file | `-c my-portfolio` |
-| `-s, --save` | Save current portfolio | `-s` |
-| `-l, --list` | List saved configurations | `-l` |
-| `-h, --help` | Show help message | `-h` |
+| Option         | Description                 | Example           |
+| -------------- | --------------------------- | ----------------- |
+| `-d, --date`   | Purchase date (YYYY-MM-DD)  | `-d 2023-06-01`   |
+| `-a, --asset`  | Add asset (TICKER:QUANTITY) | `-a AAPL:10`      |
+| `-c, --config` | Load configuration file     | `-c my-portfolio` |
+| `-s, --save`   | Save current portfolio      | `-s`              |
+| `-l, --list`   | List saved configurations   | `-l`              |
+| `-h, --help`   | Show help message           | `-h`              |
 
 ## Sample Output
 
@@ -137,6 +144,7 @@ Maximum Drawdown: 24.34%
 ## Architecture
 
 ### Project Structure
+
 ```
 PortfolioAnalyzer/
 ├── Program.cs                 # Main application entry point
@@ -157,6 +165,7 @@ PortfolioAnalyzer/
 ```
 
 ### Technology Stack
+
 - **Backend**: C# (.NET 9.0)
 - **Data Fetching**: Python with yfinance library
 - **Data Storage**: JSON configuration files
@@ -165,12 +174,14 @@ PortfolioAnalyzer/
 ## Key Metrics Explained
 
 ### Performance Metrics
+
 - **Total Return**: Absolute gain/loss from initial investment
 - **Annualized Return**: Yearly return rate (compound annual growth rate)
 - **Alpha**: Excess return compared to benchmark (risk-adjusted outperformance)
 - **Beta**: Portfolio volatility relative to market (1.0 = same as market)
 
 ### Risk Metrics
+
 - **Volatility**: Standard deviation of returns (annualized)
 - **Sharpe Ratio**: Risk-adjusted return (higher is better)
 - **Maximum Drawdown**: Largest peak-to-trough decline
@@ -178,6 +189,7 @@ PortfolioAnalyzer/
 ## Configuration Storage
 
 Configurations are stored in platform-appropriate directories:
+
 - **macOS**: `~/Library/Application Support/PortfolioAnalyzer/`
 - **Windows**: `%APPDATA%\PortfolioAnalyzer\`
 - **Linux**: `~/.config/PortfolioAnalyzer/`
@@ -185,16 +197,19 @@ Configurations are stored in platform-appropriate directories:
 ## Example Portfolios
 
 ### Conservative Portfolio
+
 ```bash
 dotnet run -- -d 2024-01-01 -a SPY:40 -a BND:30 -a VTI:30
 ```
 
 ### Tech Focus
+
 ```bash
 dotnet run -- -d 2023-01-01 -a AAPL:20 -a MSFT:15 -a NVDA:10 -a GOOG:15
 ```
 
 ### Growth Portfolio
+
 ```bash
 dotnet run -- -d 2023-06-01 -a TSLA:10 -a NVDA:5 -a AMD:20 -a PLTR:25
 ```
@@ -202,16 +217,19 @@ dotnet run -- -d 2023-06-01 -a TSLA:10 -a NVDA:5 -a AMD:20 -a PLTR:25
 ## Development
 
 ### Building
+
 ```bash
 dotnet build
 ```
 
 ### Running Tests
+
 ```bash
 dotnet test  # (when tests are added)
 ```
 
 ### Adding New Features
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
@@ -221,16 +239,14 @@ dotnet test  # (when tests are added)
 ## Dependencies
 
 ### .NET Packages
+
 - System.Text.Json (built-in)
 - System.Diagnostics.Process (built-in)
 
 ### Python Packages
+
 - yfinance >= 0.2.0
 - pandas >= 1.3.0
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
@@ -245,6 +261,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Roadmap
 
 ### Planned Features
+
 - [ ] Multiple benchmark options (NASDAQ, sector ETFs)
 - [ ] Dividend tracking and yield calculations
 - [ ] Portfolio optimization algorithms
@@ -255,6 +272,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] Tax-loss harvesting suggestions
 
 ### Known Issues
+
 - Requires active internet connection for data fetching
 - Historical data limited by Yahoo Finance availability
 

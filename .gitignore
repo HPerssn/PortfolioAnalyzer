@@ -96,3 +96,6 @@ yarn-error.log*
 dist/
 build/
 out/
+
+# Claude Code project notes
+claude.md

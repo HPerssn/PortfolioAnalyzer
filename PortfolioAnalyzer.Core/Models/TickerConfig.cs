@@ -6,7 +6,6 @@ namespace PortfolioAnalyzer.Core.Models
     public class TickerConfig
     {
         public string Symbol { get; set; } = "";
-        public decimal Shares { get; set; }
         public decimal Quantity { get; set; }
         public decimal AverageCost { get; set; }
         public decimal PurchasePrice { get; set; }

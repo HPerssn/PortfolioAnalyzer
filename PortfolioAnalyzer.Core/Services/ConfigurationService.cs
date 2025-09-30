@@ -35,8 +35,20 @@ namespace PortfolioAnalyzer.Core.Services
             return JsonSerializer.Deserialize<PortfolioConfiguration>(json);
         }
 
-        public async Task SaveConfigurationAsync(PortfolioConfiguration config, string filename)
+        public async Task SaveConfigurationAsync(PortfolioConfiguration config, string? filename = null)
         {
+            // Auto-generate filename if not provided
+            if (string.IsNullOrEmpty(filename))
+            {
+                filename = $"portfolio_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+            }
+
+            // Ensure .json extension
+            if (!filename.EndsWith(".json"))
+            {
+                filename += ".json";
+            }
+
             var filePath = Path.Combine(_configDirectory, filename);
             var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json);
@@ -70,7 +82,6 @@ namespace PortfolioAnalyzer.Core.Services
                 {
                     Symbol = asset.Symbol,
                     Quantity = asset.Quantity,
-                    Shares = asset.Shares,
                     PurchaseDate = asset.PurchaseDate,
                     HistoricalPrices = asset.HistoricalPrices
                 });
@@ -88,6 +99,114 @@ namespace PortfolioAnalyzer.Core.Services
                 new Asset("GOOGL", 5, 2500.00m) { CurrentPrice = 2750.00m },
                 new Asset("MSFT", 8, 300.00m) { CurrentPrice = 350.00m }
             };
+        }
+
+        /// <summary>
+        /// Creates a new portfolio configuration from a list of tickers
+        /// </summary>
+        public PortfolioConfiguration CreateConfiguration(
+            string name,
+            List<TickerConfig> tickers,
+            string? description = null)
+        {
+            return new PortfolioConfiguration
+            {
+                Name = name,
+                Description = description,
+                CreatedDate = DateTime.Now,
+                LastUpdated = DateTime.Now,
+                Tickers = tickers
+            };
+        }
+
+        /// <summary>
+        /// Creates or loads a default configuration for quick testing
+        /// </summary>
+        public async Task<PortfolioConfiguration> GetOrCreateDefaultConfigurationAsync()
+        {
+            var defaultConfigName = "default.json";
+            var config = await LoadConfigurationAsync(defaultConfigName);
+
+            if (config == null)
+            {
+                // Create default configuration
+                config = new PortfolioConfiguration
+                {
+                    Name = "Default Portfolio",
+                    Description = "Auto-generated default portfolio",
+                    Tickers = new List<TickerConfig>
+                    {
+                        new TickerConfig { Symbol = "AAPL", Quantity = 10, PurchaseDate = DateTime.Now.AddYears(-1) },
+                        new TickerConfig { Symbol = "MSFT", Quantity = 15, PurchaseDate = DateTime.Now.AddYears(-1) },
+                        new TickerConfig { Symbol = "GOOGL", Quantity = 5, PurchaseDate = DateTime.Now.AddYears(-1) }
+                    }
+                };
+
+                await SaveConfigurationAsync(config, defaultConfigName);
+            }
+
+            return config;
+        }
+
+        /// <summary>
+        /// Validates a portfolio configuration
+        /// </summary>
+        public bool ValidateConfiguration(PortfolioConfiguration config, out List<string> errors)
+        {
+            errors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(config.Name))
+            {
+                errors.Add("Portfolio name is required");
+            }
+
+            if (config.Tickers == null || config.Tickers.Count == 0)
+            {
+                errors.Add("Portfolio must contain at least one ticker");
+            }
+            else
+            {
+                foreach (var ticker in config.Tickers)
+                {
+                    if (string.IsNullOrWhiteSpace(ticker.Symbol))
+                    {
+                        errors.Add("All tickers must have a symbol");
+                    }
+
+                    if (ticker.Quantity <= 0)
+                    {
+                        errors.Add($"Ticker {ticker.Symbol} must have quantity > 0");
+                    }
+
+                    if (ticker.PurchaseDate == default)
+                    {
+                        errors.Add($"Ticker {ticker.Symbol} must have a purchase date");
+                    }
+                }
+            }
+
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// Deletes a configuration file
+        /// </summary>
+        public bool DeleteConfiguration(string filename)
+        {
+            if (!filename.EndsWith(".json"))
+            {
+                filename += ".json";
+            }
+
+            var filePath = Path.Combine(_configDirectory, filename);
+
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+                return true;
+            }
+
+            return false;
         }
     }
 }

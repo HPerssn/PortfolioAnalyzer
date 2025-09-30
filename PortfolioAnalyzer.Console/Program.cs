@@ -6,15 +6,11 @@ using PortfolioAnalyzer.Core.Models;
 using PortfolioAnalyzer.Core.Services;
 using PortfolioAnalyzer.Core.Data;
 
-public class AssetConfig
+// Lightweight DTO for command-line argument parsing
+// Think of this like a Python dataclass used temporarily during parsing
+public class CommandLineArgs
 {
-    public string Ticker { get; set; } = "";
-    public decimal Quantity { get; set; }
-}
-
-public class PortfolioConfig
-{
-    public List<AssetConfig> Assets { get; set; } = new List<AssetConfig>();
+    public List<TickerConfig> Tickers { get; set; } = new List<TickerConfig>();
     public DateTime PurchaseDate { get; set; }
 }
 
@@ -26,34 +22,31 @@ class Program
         {
             var configService = new ConfigurationService();
             PortfolioConfiguration? portfolioConfig = null;
-            var config = ParseCommandLineArguments(args, out string? configFileName, out bool saveConfig, out bool listConfigs);
-            
+            var parsedArgs = ParseCommandLineArguments(args, out string? configFileName, out bool saveConfig, out bool listConfigs);
+
             // Handle special commands
             if (listConfigs)
             {
                 ListAvailableConfigurations(configService);
                 return;
             }
-            
+
             // Load from configuration file if specified
             if (!string.IsNullOrEmpty(configFileName))
             {
                 Console.WriteLine($"Loading configuration from: {configFileName}");
                 portfolioConfig = await configService.LoadConfigurationAsync(configFileName + ".json");
-                
-                // Override with command line arguments if provided
-                if (config.Assets.Any())
+
+                if (portfolioConfig == null)
                 {
-                    portfolioConfig.Tickers.Clear();
-                    foreach (var asset in config.Assets)
-                    {
-                        portfolioConfig.Tickers.Add(new TickerConfig
-                        {
-                            Symbol = asset.Ticker,
-                            Quantity = asset.Quantity,
-                            PurchaseDate = config.PurchaseDate
-                        });
-                    }
+                    Console.WriteLine($"Configuration file '{configFileName}' not found.");
+                    return;
+                }
+
+                // Override with command line arguments if provided
+                if (parsedArgs.Tickers.Any())
+                {
+                    portfolioConfig.Tickers = parsedArgs.Tickers;
                 }
             }
             else
@@ -62,44 +55,16 @@ class Program
                 portfolioConfig = new PortfolioConfiguration
                 {
                     Name = "Command Line Portfolio",
-                    Tickers = config.Assets.Select(a => new TickerConfig
-                    {
-                        Symbol = a.Ticker,
-                        Quantity = a.Quantity,
-                        PurchaseDate = config.PurchaseDate
-                    }).ToList()
+                    Tickers = parsedArgs.Tickers
                 };
             }
-            
-            // Create and populate portfolio
-            var portfolio = new Portfolio();
 
-            foreach (var tickerConfig in portfolioConfig.Tickers)
-            {
-                Console.WriteLine($"Fetching data for {tickerConfig.Symbol}...");
-                
-                // Fetch historical prices from Python script
-                var prices = ReadData.FetchPricesFromPython(tickerConfig.Symbol, tickerConfig.PurchaseDate);
-
-                // Create an Asset object
-                var asset = new Asset(tickerConfig.Symbol, tickerConfig.PurchaseDate)
-                {
-                    Quantity = tickerConfig.Quantity,
-                    HistoricalPrices = prices.Select(p => p.Close).ToList()
-                };
-
-                // Update the ticker config with fetched prices
-                tickerConfig.HistoricalPrices = asset.HistoricalPrices;
-                if (asset.HistoricalPrices.Any())
-                {
-                    tickerConfig.PurchasePrice = asset.HistoricalPrices.First();
-                    asset.AverageCost = asset.HistoricalPrices.First(); // Set purchase price as average cost
-                    asset.CurrentPrice = asset.HistoricalPrices.Last(); // Set latest price as current price
-                }
-
-                // Add the asset to the portfolio
-                portfolio.AddAsset(asset);
-            }
+            // Build portfolio using the shared service
+            var portfolioBuilder = new PortfolioBuilderService();
+            var portfolio = portfolioBuilder.BuildFromConfiguration(
+                portfolioConfig,
+                onProgress: message => Console.WriteLine(message)
+            );
 
             // Create the service to handle calculations and display
             var service = new PortfolioService(portfolio);
@@ -127,8 +92,9 @@ class Program
             {
                 var configToSave = configService.ConvertFromPortfolio(portfolio, portfolioConfig.Name);
                 configToSave.Description = portfolioConfig.Description;
-                var saveFileName = !string.IsNullOrEmpty(configFileName) ? configFileName + ".json" : null;
+                var saveFileName = !string.IsNullOrEmpty(configFileName) ? configFileName : null;
                 await configService.SaveConfigurationAsync(configToSave, saveFileName);
+                Console.WriteLine($"Configuration saved to: {configService.GetConfigDirectory()}");
             }
 
             // Keep console open
@@ -142,28 +108,28 @@ class Program
         }
     }
 
-    static PortfolioConfig ParseCommandLineArguments(string[] args, out string? configFileName, out bool saveConfig, out bool listConfigs)
+    static CommandLineArgs ParseCommandLineArguments(string[] args, out string? configFileName, out bool saveConfig, out bool listConfigs)
     {
         configFileName = null;
         saveConfig = false;
         listConfigs = false;
-        
+
         if (args.Length == 0)
         {
             // Default configuration for demonstration
-            return new PortfolioConfig
+            return new CommandLineArgs
             {
                 PurchaseDate = new DateTime(2024, 1, 1),
-                Assets = new List<AssetConfig>
+                Tickers = new List<TickerConfig>
                 {
-                    new AssetConfig { Ticker = "AAPL", Quantity = 10 },
-                    new AssetConfig { Ticker = "GOOG", Quantity = 10 }
+                    new TickerConfig { Symbol = "AAPL", Quantity = 10, PurchaseDate = new DateTime(2024, 1, 1) },
+                    new TickerConfig { Symbol = "GOOG", Quantity = 10, PurchaseDate = new DateTime(2024, 1, 1) }
                 }
             };
         }
 
-        var config = new PortfolioConfig();
-        var assets = new List<AssetConfig>();
+        var config = new CommandLineArgs();
+        var tickers = new List<TickerConfig>();
         
         // Parse arguments
         for (int i = 0; i < args.Length; i++)
@@ -190,7 +156,12 @@ class Program
                         var parts = args[i + 1].Split(':');
                         if (parts.Length == 2 && decimal.TryParse(parts[1], out decimal quantity))
                         {
-                            assets.Add(new AssetConfig { Ticker = parts[0].ToUpper(), Quantity = quantity });
+                            tickers.Add(new TickerConfig
+                            {
+                                Symbol = parts[0].ToUpper(),
+                                Quantity = quantity,
+                                PurchaseDate = config.PurchaseDate != default ? config.PurchaseDate : new DateTime(2024, 1, 1)
+                            });
                         }
                         else
                         {
@@ -239,14 +210,23 @@ class Program
             config.PurchaseDate = new DateTime(2024, 1, 1); // Default date
         }
 
-        if (assets.Count == 0 && string.IsNullOrEmpty(configFileName))
+        if (tickers.Count == 0 && string.IsNullOrEmpty(configFileName))
         {
-            // Default assets if none specified and no config file
-            assets.Add(new AssetConfig { Ticker = "AAPL", Quantity = 10 });
-            assets.Add(new AssetConfig { Ticker = "GOOG", Quantity = 10 });
+            // Default tickers if none specified and no config file
+            tickers.Add(new TickerConfig { Symbol = "AAPL", Quantity = 10, PurchaseDate = config.PurchaseDate });
+            tickers.Add(new TickerConfig { Symbol = "GOOG", Quantity = 10, PurchaseDate = config.PurchaseDate });
         }
 
-        config.Assets = assets;
+        // Update PurchaseDate for all tickers
+        foreach (var ticker in tickers)
+        {
+            if (ticker.PurchaseDate == default(DateTime))
+            {
+                ticker.PurchaseDate = config.PurchaseDate;
+            }
+        }
+
+        config.Tickers = tickers;
         return config;
     }
 

@@ -8,7 +8,6 @@ namespace PortfolioAnalyzer.Core.Models
     {
         public string Symbol { get; set; }
         public decimal Quantity { get; set; }
-        public decimal Shares { get; set; }
         public decimal AverageCost { get; set; }
         public decimal CurrentPrice { get; set; }
         public DateTime PurchaseDate { get; set; }
@@ -21,17 +20,15 @@ namespace PortfolioAnalyzer.Core.Models
             PurchaseDate = purchaseDate;
             HistoricalPrices = new List<decimal>();
             Quantity = 0;
-            Shares = 0;
             AverageCost = 0;
             CurrentPrice = 0;
         }
 
         // Constructor for simple usage
-        public Asset(string symbol, decimal shares, decimal averageCost)
+        public Asset(string symbol, decimal quantity, decimal averageCost)
         {
             Symbol = symbol;
-            Shares = shares;
-            Quantity = shares; // For compatibility
+            Quantity = quantity;
             AverageCost = averageCost;
             CurrentPrice = 0;
             PurchaseDate = DateTime.Now;
@@ -40,14 +37,12 @@ namespace PortfolioAnalyzer.Core.Models
 
         public decimal GetTotalCost()
         {
-            var effectiveShares = Shares > 0 ? Shares : Quantity;
-            return effectiveShares * AverageCost;
+            return Quantity * AverageCost;
         }
 
         public decimal GetCurrentValue()
         {
-            var effectiveShares = Shares > 0 ? Shares : Quantity;
-            return effectiveShares * CurrentPrice;
+            return Quantity * CurrentPrice;
         }
 
         public decimal GetReturn()
