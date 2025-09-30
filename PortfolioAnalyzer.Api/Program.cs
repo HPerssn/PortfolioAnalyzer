@@ -4,6 +4,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+// Add Application Insights telemetry
+builder.Services.AddApplicationInsightsTelemetry();
+
 // Add CORS for development
 builder.Services.AddCors(options =>
 {

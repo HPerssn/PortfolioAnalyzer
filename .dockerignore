@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+
+# Documentation
+*.md
+LICENSE
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+dist/
+build/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application data
+*.log
+temp/
+logs/
+
+# Sensitive
+*.key
+*.secret
+config/secrets/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+coverage/
+
+# Node modules (if added later)
+node_modules/
