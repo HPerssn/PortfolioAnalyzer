@@ -26,20 +26,32 @@ namespace PortfolioAnalyzer.Core.Data
     {
         string startDate = purchaseDate.ToString("yyyy-MM-dd");
 
-        // Find the root project directory
-        var currentDir = Directory.GetCurrentDirectory();
-        var rootDir = currentDir;
-        
-        // Look for the venv directory by going up the directory tree
-        while (!Directory.Exists(Path.Combine(rootDir, "venv")) && rootDir != "/")
+        string pythonPath;
+        string scriptPath;
+
+        // Check if we're running in Docker (venv at /venv indicates Docker environment)
+        if (Directory.Exists("/venv"))
         {
-            var parent = Directory.GetParent(rootDir);
-            if (parent == null) break;
-            rootDir = parent.FullName;
+            // Docker environment - use absolute paths
+            pythonPath = "/venv/bin/python";
+            scriptPath = "/app/PortfolioAnalyzer.Core/Data/FetchData.py";
         }
-        
-        var pythonPath = Path.Combine(rootDir, "venv", "bin", "python");
-        var scriptPath = Path.Combine(rootDir, "PortfolioAnalyzer.Core", "Data", "FetchData.py");
+        else
+        {
+            // Local development - find venv by traversing up directory tree
+            var currentDir = Directory.GetCurrentDirectory();
+            var rootDir = currentDir;
+
+            while (!Directory.Exists(Path.Combine(rootDir, "venv")) && rootDir != "/")
+            {
+                var parent = Directory.GetParent(rootDir);
+                if (parent == null) break;
+                rootDir = parent.FullName;
+            }
+
+            pythonPath = Path.Combine(rootDir, "venv", "bin", "python");
+            scriptPath = Path.Combine(rootDir, "PortfolioAnalyzer.Core", "Data", "FetchData.py");
+        }
         
         var psi = new ProcessStartInfo
         {

@@ -32,9 +32,9 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Create Python virtual environment
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Create Python virtual environment at /venv (where ReadData.cs expects it)
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
 
 # Copy Python requirements and install
 COPY requirements.txt .
