@@ -1,19 +1,19 @@
 version: '3.8'
 
 services:
-  api:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: portfolioanalyzer-api
+    container_name: portfolioanalyzer-fullstack
     ports:
-      - "5000:8080"
+      - "5555:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
     volumes:
       # Mount Python scripts for development hot-reload
-      - ./PortfolioAnalyzer.Core/Data:/app/PortfolioAnalyzer.Core/Data:ro
+      - ./backend/PortfolioAnalyzer.Core/Data:/app/PortfolioAnalyzer.Core/Data:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/portfolio/health"]

@@ -50,7 +50,7 @@ namespace PortfolioAnalyzer.Core.Data
             }
 
             pythonPath = Path.Combine(rootDir, "venv", "bin", "python");
-            scriptPath = Path.Combine(rootDir, "PortfolioAnalyzer.Core", "Data", "FetchData.py");
+            scriptPath = Path.Combine(rootDir, "backend", "PortfolioAnalyzer.Core", "Data", "FetchData.py");
         }
         
         var psi = new ProcessStartInfo

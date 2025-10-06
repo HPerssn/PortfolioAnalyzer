@@ -27,16 +27,16 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore backend/PortfolioAnalyzer.sln
 
     - name: Build solution
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build backend/PortfolioAnalyzer.sln --configuration Release --no-restore
 
     - name: Run tests
-      run: dotnet test --no-build --verbosity normal --configuration Release
+      run: dotnet test backend/PortfolioAnalyzer.sln --no-build --verbosity normal --configuration Release
 
     - name: Publish API
-      run: dotnet publish PortfolioAnalyzer.Api/PortfolioAnalyzer.Api.csproj -c Release -o ./publish
+      run: dotnet publish backend/PortfolioAnalyzer.Api/PortfolioAnalyzer.Api.csproj -c Release -o ./publish
 
     - name: Upload artifact for deployment
       uses: actions/upload-artifact@v4

@@ -24,10 +24,19 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.UseCors();
 }
 
+app.UseCors();
 app.UseHttpsRedirection();
+
+// Serve static files (frontend)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// API routes
 app.MapControllers();
+
+// Fallback to index.html for SPA routing (Vue Router)
+app.MapFallbackToFile("index.html");
 
 app.Run();
