@@ -251,10 +251,34 @@ export default {
 
 <style scoped>
 .dashboard {
-  height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 100vh; /* base */
+}
+
+/* Desktop and large screens: fixed full height, no scroll */
+@media (min-width: 1024px) {
+  .dashboard {
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
+/* Tablets and smaller: allow scroll */
+@media (max-width: 1023px) {
+  .dashboard {
+    height: auto;
+    overflow-y: auto;
+  }
+}
+
+/* Mobile and tablets — allow scroll */
+@media (max-width: 1023px) {
+  .main-container {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
 }
 
 .header {
@@ -684,5 +708,109 @@ export default {
   font-size: var(--font-size-xs);
   color: var(--color-text-light);
   font-weight: 300;
+}
+
+/* --- Responsive Adjustments --- */
+
+/* Tablets (<= 1024px) */
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-section {
+    order: 1;
+  }
+
+  .sidebar {
+    order: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+  }
+
+  .sidebar-section {
+    flex: 1 1 calc(50% - var(--spacing-md));
+    min-width: 280px;
+  }
+}
+
+/* Mobile (<= 768px) */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .main-content {
+    grid-template-columns: 1fr;
+    padding: var(--spacing-lg);
+  }
+
+  .chart-section {
+    height: 240px;
+  }
+
+  .sidebar {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding-right: 0;
+  }
+
+  .sidebar-section {
+    width: 100%;
+  }
+
+  .stat-card {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .stat-value {
+    font-size: 1.2rem;
+  }
+
+  .stat-icon {
+    display: none; /* hides icons to preserve space */
+  }
+}
+
+/* Very small devices (<= 480px) */
+@media (max-width: 480px) {
+  .header-title h1 {
+    font-size: 1.2rem;
+  }
+
+  .btn-toggle-form {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .sidebar-section h3 {
+    font-size: 10px;
+  }
+
+  .stat-card {
+    padding: var(--spacing-md);
+  }
+
+  .chart-placeholder {
+    background-size: 12px 12px;
+  }
 }
 </style>
