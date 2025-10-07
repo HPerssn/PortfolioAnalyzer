@@ -38,15 +38,82 @@ namespace PortfolioAnalyzer.Api.Controllers
         }
 
         /// <summary>
-        /// Get portfolio summary with real data
+        /// Request model for calculating portfolio
+        /// </summary>
+        public class CalculatePortfolioRequest
+        {
+            public required List<HoldingInput> Holdings { get; set; }
+            public required DateTime PurchaseDate { get; set; }
+        }
+
+        public class HoldingInput
+        {
+            public required string Symbol { get; set; }
+            public decimal Quantity { get; set; }
+        }
+
+        /// <summary>
+        /// Calculate portfolio summary from user input (no persistence)
+        /// </summary>
+        [HttpPost("calculate")]
+        public async Task<IActionResult> CalculatePortfolio([FromBody] CalculatePortfolioRequest request)
+        {
+            try
+            {
+                if (request?.Holdings == null || !request.Holdings.Any())
+                {
+                    return BadRequest(new { error = "Holdings are required" });
+                }
+
+                // Convert to dictionary format
+                var holdings = request.Holdings.ToDictionary(h => h.Symbol.ToUpper(), h => h.Quantity);
+
+                var portfolio = await _portfolioBuilder.BuildFromSymbolsAsync(
+                    holdings,
+                    request.PurchaseDate
+                );
+
+                // Build response from portfolio
+                var assets = portfolio.Assets.Select(asset => new
+                {
+                    Symbol = asset.Symbol,
+                    Quantity = asset.Quantity,
+                    AverageCost = Math.Round(asset.AverageCost, 2),
+                    CurrentPrice = Math.Round(asset.CurrentPrice, 2),
+                    TotalCost = Math.Round(asset.GetTotalCost(), 2),
+                    CurrentValue = Math.Round(asset.GetCurrentValue(), 2),
+                    Return = Math.Round(asset.GetReturn(), 2),
+                    ReturnPercentage = Math.Round(asset.GetReturnPercentage(), 2)
+                }).ToList();
+
+                var summary = new
+                {
+                    TotalValue = Math.Round(portfolio.GetTotalValue(), 2),
+                    TotalCost = Math.Round(portfolio.GetTotalCost(), 2),
+                    TotalReturn = Math.Round(portfolio.GetTotalReturn(), 2),
+                    TotalReturnPercentage = Math.Round(portfolio.GetTotalReturnPercentage(), 2),
+                    AssetCount = portfolio.Assets.Count,
+                    Assets = assets,
+                    LastUpdated = DateTime.UtcNow
+                };
+
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get portfolio summary with demo data
         /// </summary>
         [HttpGet("summary")]
         public async Task<IActionResult> GetPortfolioSummary()
         {
             try
             {
-                // Build a sample portfolio (or load from config)
-                // In a real app, this would come from user's saved portfolio or request parameters
+                // Demo portfolio
                 var sampleTickers = new Dictionary<string, decimal>
                 {
                     { "AAPL", 10m },
