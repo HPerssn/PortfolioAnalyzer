@@ -41,7 +41,7 @@ namespace PortfolioAnalyzer.Api.Controllers
         /// Get portfolio summary with real data
         /// </summary>
         [HttpGet("summary")]
-        public IActionResult GetPortfolioSummary()
+        public async Task<IActionResult> GetPortfolioSummary()
         {
             try
             {
@@ -54,7 +54,7 @@ namespace PortfolioAnalyzer.Api.Controllers
                     { "MSFT", 8m }
                 };
 
-                var portfolio = _portfolioBuilder.BuildFromSymbols(
+                var portfolio = await _portfolioBuilder.BuildFromSymbolsAsync(
                     sampleTickers,
                     new DateTime(2024, 1, 1)
                 );
@@ -95,7 +95,7 @@ namespace PortfolioAnalyzer.Api.Controllers
         /// Get list of all assets with real data
         /// </summary>
         [HttpGet("assets")]
-        public IActionResult GetAssets()
+        public async Task<IActionResult> GetAssets()
         {
             try
             {
@@ -107,7 +107,7 @@ namespace PortfolioAnalyzer.Api.Controllers
                     { "MSFT", 8m }
                 };
 
-                var portfolio = _portfolioBuilder.BuildFromSymbols(
+                var portfolio = await _portfolioBuilder.BuildFromSymbolsAsync(
                     sampleTickers,
                     new DateTime(2024, 1, 1)
                 );

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using PortfolioAnalyzer.Core.Models;
 using PortfolioAnalyzer.Core.Data;
 
@@ -19,12 +20,12 @@ namespace PortfolioAnalyzer.Core.Services
         /// <param name="config">The portfolio configuration containing tickers and metadata</param>
         /// <param name="onProgress">Optional callback for progress updates (e.g., "Fetching AAPL...")</param>
         /// <returns>A fully populated Portfolio object</returns>
-        public Portfolio BuildFromConfiguration(PortfolioConfiguration config, Action<string>? onProgress = null)
+        public async Task<Portfolio> BuildFromConfigurationAsync(PortfolioConfiguration config, Action<string>? onProgress = null)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            return BuildFromTickers(config.Tickers, onProgress);
+            return await BuildFromTickersAsync(config.Tickers, onProgress);
         }
 
         /// <summary>
@@ -34,7 +35,7 @@ namespace PortfolioAnalyzer.Core.Services
         /// <param name="tickers">List of ticker configurations</param>
         /// <param name="onProgress">Optional callback for progress updates</param>
         /// <returns>A fully populated Portfolio object</returns>
-        public Portfolio BuildFromTickers(List<TickerConfig> tickers, Action<string>? onProgress = null)
+        public async Task<Portfolio> BuildFromTickersAsync(List<TickerConfig> tickers, Action<string>? onProgress = null)
         {
             if (tickers == null)
                 throw new ArgumentNullException(nameof(tickers));
@@ -47,7 +48,7 @@ namespace PortfolioAnalyzer.Core.Services
                 onProgress?.Invoke($"Fetching data for {tickerConfig.Symbol}...");
 
                 // Fetch and populate the asset
-                var asset = FetchAndPopulateAsset(tickerConfig);
+                var asset = await FetchAndPopulateAssetAsync(tickerConfig);
 
                 // Update the ticker config with fetched prices (for saving later)
                 tickerConfig.HistoricalPrices = asset.HistoricalPrices;
@@ -68,10 +69,10 @@ namespace PortfolioAnalyzer.Core.Services
         /// </summary>
         /// <param name="tickerConfig">The ticker configuration</param>
         /// <returns>An Asset populated with historical prices</returns>
-        private Asset FetchAndPopulateAsset(TickerConfig tickerConfig)
+        private async Task<Asset> FetchAndPopulateAssetAsync(TickerConfig tickerConfig)
         {
-            // Fetch historical prices from Python/Yahoo Finance
-            var prices = ReadData.FetchPricesFromPython(tickerConfig.Symbol, tickerConfig.PurchaseDate);
+            // Fetch historical prices directly from Yahoo Finance (C# HTTP call - no Python!)
+            var prices = await ReadData.FetchPricesFromYahooFinanceAsync(tickerConfig.Symbol, tickerConfig.PurchaseDate);
 
             // Create the Asset object
             var asset = new Asset(tickerConfig.Symbol, tickerConfig.PurchaseDate)
@@ -98,7 +99,7 @@ namespace PortfolioAnalyzer.Core.Services
         /// <param name="purchaseDate">Purchase date for all assets</param>
         /// <param name="onProgress">Optional callback for progress updates</param>
         /// <returns>A fully populated Portfolio object</returns>
-        public Portfolio BuildFromSymbols(Dictionary<string, decimal> symbols, DateTime purchaseDate, Action<string>? onProgress = null)
+        public async Task<Portfolio> BuildFromSymbolsAsync(Dictionary<string, decimal> symbols, DateTime purchaseDate, Action<string>? onProgress = null)
         {
             var tickers = symbols.Select(kvp => new TickerConfig
             {
@@ -107,7 +108,7 @@ namespace PortfolioAnalyzer.Core.Services
                 PurchaseDate = purchaseDate
             }).ToList();
 
-            return BuildFromTickers(tickers, onProgress);
+            return await BuildFromTickersAsync(tickers, onProgress);
         }
     }
 }
