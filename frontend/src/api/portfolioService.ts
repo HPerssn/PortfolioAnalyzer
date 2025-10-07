@@ -1,9 +1,27 @@
 import apiClient from './client'
 import type { PortfolioSummary, Asset, StockPrice } from '@/types/portfolio'
 
+export interface HoldingInput {
+  symbol: string
+  quantity: number
+}
+
+export interface CalculatePortfolioRequest {
+  holdings: HoldingInput[]
+  purchaseDate: string // ISO date format
+}
+
 export const portfolioService = {
   /**
-   * Get portfolio summary with all assets and totals
+   * Calculate portfolio from user input (no persistence)
+   */
+  async calculatePortfolio(request: CalculatePortfolioRequest): Promise<PortfolioSummary> {
+    const response = await apiClient.post<PortfolioSummary>('/portfolio/calculate', request)
+    return response.data
+  },
+
+  /**
+   * Get demo portfolio summary
    */
   async getPortfolioSummary(): Promise<PortfolioSummary> {
     const response = await apiClient.get<PortfolioSummary>('/portfolio/summary')

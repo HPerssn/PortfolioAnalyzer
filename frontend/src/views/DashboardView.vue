@@ -3,10 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
 import type { PortfolioSummary } from '@/types/portfolio'
 import PixelIcon from '@/components/PixelIcon.vue'
+import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 
 const portfolio = ref<PortfolioSummary | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const showForm = ref(true)
 
 const fetchPortfolio = async () => {
   try {
@@ -19,6 +21,24 @@ const fetchPortfolio = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleCalculated = (summary: PortfolioSummary) => {
+  portfolio.value = summary
+  loading.value = false
+  error.value = null
+  showForm.value = false
+}
+
+const handleError = (message: string) => {
+  error.value = message
+  setTimeout(() => {
+    error.value = null
+  }, 5000)
+}
+
+const toggleForm = () => {
+  showForm.value = !showForm.value
 }
 
 const formatCurrency = (value: number) => {
@@ -50,20 +70,29 @@ onMounted(() => {
         <h1>Portfolio</h1>
         <div class="accent-line"></div>
       </div>
-      <div class="header-info" v-if="portfolio">
-        Updated
-        {{
-          new Date(portfolio.lastUpdated).toLocaleTimeString('sv-SE', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        }}
+      <div class="header-actions">
+        <button @click="toggleForm" class="btn-toggle-form">
+          {{ showForm ? 'Hide Form' : 'Edit Portfolio' }}
+        </button>
+        <div class="header-info" v-if="portfolio">
+          Updated
+          {{
+            new Date(portfolio.lastUpdated).toLocaleTimeString('sv-SE', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          }}
+        </div>
       </div>
     </header>
 
+    <div v-if="showForm" class="form-container">
+      <PortfolioInputForm @calculated="handleCalculated" @error="handleError" />
+    </div>
+
     <div v-if="error" class="error-message">
       <p>{{ error }}</p>
-      <button @click="fetchPortfolio">Retry</button>
+      <button @click="error = null" class="btn-dismiss">Dismiss</button>
     </div>
 
     <div v-else-if="loading" class="loading">
@@ -251,10 +280,52 @@ export default {
   background: var(--color-primary);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
 .header-info {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-weight: 300;
+}
+
+.btn-toggle-form {
+  padding: 0.35rem 0.9rem;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 9999px; /* pill shape */
+  color: #666;
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-toggle-form:hover {
+  border-color: #f97316;
+  color: #f97316;
+  background: #fff7f0;
+  transform: translateY(-1px);
+}
+
+.btn-toggle-form:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.btn-toggle-form:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #e5e5e5;
+  color: #aaa;
+}
+
+.form-container {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: var(--color-bg-base);
 }
 
 .error-message,

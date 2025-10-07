@@ -32,8 +32,49 @@ namespace PortfolioAnalyzer.Core.Data
     }
 
     /// <summary>
+    /// Fetches exchange rate from USD to target currency using Yahoo Finance
+    /// Uses 24-hour cache as exchange rates don't change frequently
+    /// </summary>
+    private static async Task<decimal> GetExchangeRateAsync(string fromCurrency, string toCurrency = "USD")
+    {
+        if (fromCurrency == toCurrency)
+            return 1.0m;
+
+        var cacheKey = $"exchange_{fromCurrency}_{toCurrency}";
+
+        // Check cache first (24 hour cache for exchange rates)
+        if (cache.TryGetValue(cacheKey, out decimal cachedRate))
+        {
+            return cachedRate;
+        }
+
+        try
+        {
+            // Yahoo Finance forex pair format: SEKUSD=X for SEK to USD
+            var forexPair = $"{fromCurrency}{toCurrency}=X";
+            var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{forexPair}?interval=1d&range=1d";
+
+            var response = await httpClient.GetStringAsync(url);
+            var jsonDoc = JsonDocument.Parse(response);
+
+            var result = jsonDoc.RootElement.GetProperty("chart").GetProperty("result")[0];
+            var quote = result.GetProperty("meta").GetProperty("regularMarketPrice").GetDecimal();
+
+            // Cache for 24 hours
+            cache.Set(cacheKey, quote, TimeSpan.FromHours(24));
+
+            return quote;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to fetch exchange rate for {fromCurrency} to {toCurrency}: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
     /// Fetches stock prices directly from Yahoo Finance HTTP API (no Python required)
     /// Uses 30-minute cache to reduce API calls and improve performance
+    /// Automatically converts prices to USD if stock is traded in different currency
     /// </summary>
     public static async Task<List<PriceRecord>> FetchPricesFromYahooFinanceAsync(string ticker, DateTime purchaseDate)
     {
@@ -59,8 +100,15 @@ namespace PortfolioAnalyzer.Core.Data
             var jsonDoc = JsonDocument.Parse(response);
 
             var result = jsonDoc.RootElement.GetProperty("chart").GetProperty("result")[0];
+
+            // Extract currency from metadata
+            var currency = result.GetProperty("meta").GetProperty("currency").GetString() ?? "USD";
+
             var timestamps = result.GetProperty("timestamp").EnumerateArray().Select(t => t.GetInt64()).ToArray();
             var closes = result.GetProperty("indicators").GetProperty("quote")[0].GetProperty("close").EnumerateArray().Select(c => c.GetDecimal()).ToArray();
+
+            // Get exchange rate if needed (convert to USD)
+            var exchangeRate = await GetExchangeRateAsync(currency, "USD");
 
             var prices = new List<PriceRecord>();
             for (int i = 0; i < timestamps.Length; i++)
@@ -69,7 +117,7 @@ namespace PortfolioAnalyzer.Core.Data
                 prices.Add(new PriceRecord
                 {
                     Date = date.ToString("yyyy-MM-dd"),
-                    Close = closes[i]
+                    Close = closes[i] * exchangeRate  // Convert to USD
                 });
             }
 
