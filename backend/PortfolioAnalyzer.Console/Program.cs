@@ -61,7 +61,7 @@ class Program
 
             // Build portfolio using the shared service
             var portfolioBuilder = new PortfolioBuilderService();
-            var portfolio = portfolioBuilder.BuildFromConfigurationAsync(
+            var portfolio = await portfolioBuilder.BuildFromConfigurationAsync(
                 portfolioConfig,
                 onProgress: message => Console.WriteLine(message)
             );
