@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace PortfolioAnalyzer.Core.Data
 {
@@ -22,6 +23,7 @@ namespace PortfolioAnalyzer.Core.Data
     public static class ReadData
 {
     private static readonly HttpClient httpClient = new HttpClient();
+    private static readonly MemoryCache cache = new MemoryCache(new MemoryCacheOptions());
 
     static ReadData()
     {
@@ -31,9 +33,19 @@ namespace PortfolioAnalyzer.Core.Data
 
     /// <summary>
     /// Fetches stock prices directly from Yahoo Finance HTTP API (no Python required)
+    /// Uses 30-minute cache to reduce API calls and improve performance
     /// </summary>
     public static async Task<List<PriceRecord>> FetchPricesFromYahooFinanceAsync(string ticker, DateTime purchaseDate)
     {
+        // Create cache key based on ticker and purchase date
+        var cacheKey = $"prices_{ticker}_{purchaseDate:yyyy-MM-dd}";
+
+        // Check cache first
+        if (cache.TryGetValue(cacheKey, out List<PriceRecord>? cachedPrices) && cachedPrices != null)
+        {
+            return cachedPrices;
+        }
+
         try
         {
             // Convert dates to Unix timestamps
@@ -61,7 +73,12 @@ namespace PortfolioAnalyzer.Core.Data
                 });
             }
 
-            return prices.Where(p => DateTime.Parse(p.Date) >= purchaseDate).ToList();
+            var filteredPrices = prices.Where(p => DateTime.Parse(p.Date) >= purchaseDate).ToList();
+
+            // Cache for 30 minutes
+            cache.Set(cacheKey, filteredPrices, TimeSpan.FromMinutes(30));
+
+            return filteredPrices;
         }
         catch (Exception ex)
         {
