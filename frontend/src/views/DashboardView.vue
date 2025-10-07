@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
 import type { PortfolioSummary } from '@/types/portfolio'
-import AssetList from '@/components/AssetList.vue'
 import PixelIcon from '@/components/PixelIcon.vue'
 
 const portfolio = ref<PortfolioSummary | null>(null)
