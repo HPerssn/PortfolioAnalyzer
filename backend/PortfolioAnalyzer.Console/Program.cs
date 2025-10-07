@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -61,7 +61,7 @@ class Program
 
             // Build portfolio using the shared service
             var portfolioBuilder = new PortfolioBuilderService();
-            var portfolio = portfolioBuilder.BuildFromConfiguration(
+            var portfolio = portfolioBuilder.BuildFromConfigurationAsync(
                 portfolioConfig,
                 onProgress: message => Console.WriteLine(message)
             );
