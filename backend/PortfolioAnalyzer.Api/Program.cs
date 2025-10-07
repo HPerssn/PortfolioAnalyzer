@@ -37,6 +37,16 @@ app.UseStaticFiles();
 app.MapControllers();
 
 // Fallback to index.html for SPA routing (Vue Router)
-app.MapFallbackToFile("index.html");
+// Only catch routes that don't start with /api
+app.MapFallback(context =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.StatusCode = 404;
+        return Task.CompletedTask;
+    }
+    context.Response.Redirect("/index.html");
+    return Task.CompletedTask;
+});
 
 app.Run();
