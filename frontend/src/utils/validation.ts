@@ -4,7 +4,7 @@
  */
 export function isValidTickerSymbol(symbol: string): boolean {
   if (!symbol || symbol.trim() === '') return false
-  const tickerRegex = /^[A-Z0-9][A-Z0-9.\-]{0,9}$/
+  const tickerRegex = /^[A-Z0-9][A-Z0-9.\-]{0,19}$/
   return tickerRegex.test(symbol.trim().toUpperCase())
 }
 
