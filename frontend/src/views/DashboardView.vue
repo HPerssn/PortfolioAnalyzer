@@ -4,11 +4,15 @@ import { portfolioService } from '@/api/portfolioService'
 import type { PortfolioSummary } from '@/types/portfolio'
 import PixelIcon from '@/components/PixelIcon.vue'
 import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
+import PortfolioSelector from '@/components/PortfolioSelector.vue'
+import { usePortfolioStore } from '@/stores/portfolioStore'
 
+const portfolioStore = usePortfolioStore()
 const portfolio = ref<PortfolioSummary | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const showForm = ref(true)
+const inputFormRef = ref<InstanceType<typeof PortfolioInputForm> | null>(null)
 
 const fetchPortfolio = async () => {
   try {
@@ -35,6 +39,25 @@ const handleError = (message: string) => {
   setTimeout(() => {
     error.value = null
   }, 5000)
+}
+
+const handleSaved = async () => {
+  // Refresh the portfolios list
+  await portfolioStore.fetchPortfolios()
+  // Show success message
+  error.value = '✓ Portfolio saved successfully!'
+  setTimeout(() => {
+    error.value = null
+  }, 3000)
+}
+
+const handlePortfolioLoaded = (
+  holdings: Array<{ symbol: string; quantity: number }>,
+  purchaseDate: string,
+) => {
+  // Update the form with loaded portfolio data (TODO: expose method on PortfolioInputForm)
+  // For now, just show the form
+  showForm.value = true
 }
 
 const toggleForm = () => {
@@ -71,6 +94,7 @@ onMounted(() => {
         <div class="accent-line"></div>
       </div>
       <div class="header-actions">
+        <PortfolioSelector @portfolio-loaded="handlePortfolioLoaded" />
         <button @click="toggleForm" class="btn-toggle-form">
           {{ showForm ? 'Hide Form' : 'Edit Portfolio' }}
         </button>
@@ -87,7 +111,12 @@ onMounted(() => {
     </header>
 
     <div v-if="showForm" class="form-container">
-      <PortfolioInputForm @calculated="handleCalculated" @error="handleError" />
+      <PortfolioInputForm
+        ref="inputFormRef"
+        @calculated="handleCalculated"
+        @error="handleError"
+        @saved="handleSaved"
+      />
     </div>
 
     <div v-if="error" class="error-message">
@@ -325,23 +354,17 @@ export default {
   font-size: var(--font-size-xs);
   font-weight: 400;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-toggle-form:hover {
   border-color: #f97316;
   color: #f97316;
   background: #fff7f0;
-  transform: translateY(-1px);
-}
-
-.btn-toggle-form:active {
-  transform: translateY(0);
-  box-shadow: none;
 }
 
 .btn-toggle-form:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
   border-color: #e5e5e5;
   color: #aaa;

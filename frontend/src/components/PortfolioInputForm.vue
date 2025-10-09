@@ -9,11 +9,15 @@ import {
   getTickerErrorMessage,
   getQuantityErrorMessage,
 } from '@/utils/validation'
+import { usePortfolioStore } from '@/stores/portfolioStore'
 
 const emit = defineEmits<{
   calculated: [summary: PortfolioSummary]
   error: [message: string]
+  saved: []
 }>()
+
+const portfolioStore = usePortfolioStore()
 
 interface Holding {
   symbol: string
@@ -28,6 +32,9 @@ const holdings = ref<Holding[]>([
 
 const purchaseDate = ref('2024-01-01')
 const loading = ref(false)
+const showSaveModal = ref(false)
+const portfolioName = ref('')
+const saving = ref(false)
 
 const addHolding = () => {
   holdings.value.push({ symbol: '', quantity: 0 })
@@ -107,6 +114,48 @@ const calculatePortfolio = async () => {
     loading.value = false
   }
 }
+
+const openSaveModal = () => {
+  showSaveModal.value = true
+  portfolioName.value = ''
+}
+
+const closeSaveModal = () => {
+  showSaveModal.value = false
+  portfolioName.value = ''
+}
+
+const savePortfolio = async () => {
+  if (!portfolioName.value.trim()) {
+    emit('error', 'Please enter a portfolio name')
+    return
+  }
+
+  const validHoldings = holdings.value.filter((h) => h.symbol.trim() !== '' && h.quantity > 0)
+
+  if (validHoldings.length === 0) {
+    emit('error', 'Please add at least one holding before saving')
+    return
+  }
+
+  try {
+    saving.value = true
+    await portfolioStore.savePortfolio(
+      portfolioName.value.trim(),
+      purchaseDate.value,
+      validHoldings.map((h) => ({
+        symbol: h.symbol.toUpperCase(),
+        quantity: h.quantity,
+      })),
+    )
+    closeSaveModal()
+    emit('saved')
+  } catch (err: any) {
+    emit('error', err.message || 'Failed to save portfolio')
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
@@ -173,9 +222,42 @@ const calculatePortfolio = async () => {
         />
       </div>
 
-      <button @click="calculatePortfolio" :disabled="loading || hasValidationErrors" class="btn-calculate">
-        {{ loading ? 'Calculating...' : 'Calculate Portfolio' }}
-      </button>
+      <div class="button-group">
+        <button @click="calculatePortfolio" :disabled="loading || hasValidationErrors" class="btn-calculate">
+          {{ loading ? 'Calculating...' : 'Calculate Portfolio' }}
+        </button>
+        <button @click="openSaveModal" :disabled="hasValidationErrors" class="btn-save">
+          Save Portfolio
+        </button>
+      </div>
+    </div>
+
+    <!-- Save Portfolio Modal -->
+    <div v-if="showSaveModal" class="modal-overlay" @click.self="closeSaveModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Save Portfolio</h3>
+          <button @click="closeSaveModal" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <label for="portfolio-name" class="label">Portfolio Name</label>
+          <input
+            id="portfolio-name"
+            v-model="portfolioName"
+            type="text"
+            class="input"
+            placeholder="My Tech Portfolio"
+            @keyup.enter="savePortfolio"
+            autofocus
+          />
+        </div>
+        <div class="modal-footer">
+          <button @click="closeSaveModal" class="btn-cancel">Cancel</button>
+          <button @click="savePortfolio" :disabled="!portfolioName.trim() || saving" class="btn-confirm">
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -378,28 +460,138 @@ const calculatePortfolio = async () => {
   gap: var(--spacing-xs);
 }
 
-/* ---------- CALCULATE BUTTON ---------- */
+/* ---------- BUTTON GROUP ---------- */
 
-.btn-calculate {
-  padding: var(--spacing-md) var(--spacing-xl);
+.button-group {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.btn-calculate,
+.btn-save {
+  flex: 1;
+  padding: 0.5rem 1.2rem;
   background: white;
-  border: 1px solid #f97316;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
-  color: #f97316;
+  color: #666;
   font-size: var(--font-size-sm);
   font-weight: 400;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
-.btn-calculate:hover:not(:disabled) {
+.btn-calculate:hover:not(:disabled),
+.btn-save:hover:not(:disabled) {
+  border-color: #f97316;
+  color: #f97316;
   background: #fff7f0;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
-.btn-calculate:disabled {
-  opacity: 0.6;
+.btn-calculate:disabled,
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #e5e5e5;
+  color: #aaa;
+  background: white;
+}
+
+/* ---------- MODAL ---------- */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.modal-footer {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  border-top: 1px solid #e5e5e5;
+  justify-content: flex-end;
+}
+
+.btn-cancel,
+.btn-confirm {
+  padding: 0.5rem 1.2rem;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  color: #666;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  border-color: #999;
+  color: #333;
+}
+
+.btn-confirm:hover:not(:disabled) {
+  border-color: #f97316;
+  color: #f97316;
+  background: #fff7f0;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
   border-color: #e5e5e5;
   color: #aaa;

@@ -1,6 +1,15 @@
 using AspNetCoreRateLimit;
+using Microsoft.EntityFrameworkCore;
+using PortfolioAnalyzer.Core.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add database context
+builder.Services.AddDbContext<PortfolioDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register repositories
+builder.Services.AddScoped<PortfolioRepository>();
 
 // Add services to the container
 builder.Services.AddControllers();

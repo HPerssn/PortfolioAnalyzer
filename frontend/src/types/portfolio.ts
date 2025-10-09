@@ -28,3 +28,18 @@ export interface StockPrice {
 export interface ApiError {
   error: string
 }
+
+export interface SavedPortfolio {
+  id: number
+  name: string
+  createdDate: string
+  purchaseDate: string
+  holdings: SavedHolding[]
+}
+
+export interface SavedHolding {
+  id: number
+  portfolioId: number
+  symbol: string
+  quantity: number
+}

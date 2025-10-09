@@ -1,10 +1,10 @@
 /**
  * Validates a stock ticker symbol format.
- * Ticker symbols are typically 1-5 uppercase letters (e.g., AAPL, MSFT, GOOGL)
+ * Supports international tickers with hyphens and dots (e.g., AAPL, INVE-B.ST, BRK.A)
  */
 export function isValidTickerSymbol(symbol: string): boolean {
   if (!symbol || symbol.trim() === '') return false
-  const tickerRegex = /^[A-Z]{1,5}$/
+  const tickerRegex = /^[A-Z0-9][A-Z0-9.\-]{0,9}$/
   return tickerRegex.test(symbol.trim().toUpperCase())
 }
 
@@ -36,15 +36,15 @@ export function getTickerErrorMessage(symbol: string): string {
 
   const trimmed = symbol.trim()
 
-  if (trimmed.length > 5) {
-    return `Ticker symbol '${trimmed}' is too long (max 5 characters)`
+  if (trimmed.length > 10) {
+    return `Ticker symbol '${trimmed}' is too long (max 10 characters)`
   }
 
   if (trimmed.length < 1) {
     return 'Ticker symbol is too short'
   }
 
-  return `Invalid ticker symbol '${trimmed}'. Must be 1-5 uppercase letters (e.g., AAPL, MSFT)`
+  return `Invalid ticker symbol '${trimmed}'. Must be 1-10 uppercase letters/numbers/dots/hyphens (e.g., AAPL, INVE-B.ST)`
 }
 
 /**
