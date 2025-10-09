@@ -144,7 +144,7 @@ const calculatePortfolio = async () => {
             class="input quantity-input"
             :class="{
               'input-error':
-                holding.quantity > 0 && !isQuantityValid(holding.quantity),
+                holding.quantity != null && holding.quantity !== 0 && !isQuantityValid(holding.quantity),
             }"
             min="0"
             step="0.01"
