@@ -11,17 +11,17 @@ namespace PortfolioAnalyzer.Api.Services
 {
     public class RealDataService
     {
-        public List<PriceRecord> GetStockPrices(string ticker, DateTime startDate)
+        public async Task<List<PriceRecord>> GetStockPricesAsync(string ticker, DateTime startDate)
         {
-            return ReadData.FetchPricesFromPython(ticker, startDate);
+            return await ReadData.FetchPricesFromYahooFinanceAsync(ticker, startDate);
         }
 
-        public decimal GetCurrentPrice(string ticker)
+        public async Task<decimal> GetCurrentPriceAsync(string ticker)
         {
             try
             {
                 // Get the last 5 days of data to ensure we get the most recent price
-                var prices = GetStockPrices(ticker, DateTime.Now.AddDays(-5));
+                var prices = await GetStockPricesAsync(ticker, DateTime.Now.AddDays(-5));
                 return prices.Count > 0 ? prices[^1].Close : 0;
             }
             catch (Exception)

@@ -25,7 +25,7 @@ namespace PortfolioAnalyzer.Api.Controllers
         /// Get real-time stock price for a symbol
         /// </summary>
         [HttpGet("price/{symbol}")]
-        public IActionResult GetStockPrice(string symbol)
+        public async Task<IActionResult> GetStockPrice(string symbol)
         {
             try
             {
@@ -36,7 +36,7 @@ namespace PortfolioAnalyzer.Api.Controllers
                 }
 
                 var symbolUpper = symbol.ToUpper();
-                var price = _dataService.GetCurrentPrice(symbolUpper);
+                var price = await _dataService.GetCurrentPriceAsync(symbolUpper);
 
                 // Check if price fetching failed
                 if (price == 0)
