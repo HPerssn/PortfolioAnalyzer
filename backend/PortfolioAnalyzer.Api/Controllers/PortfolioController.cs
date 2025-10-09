@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PortfolioAnalyzer.Core.Services;
 using PortfolioAnalyzer.Core.Models;
+using PortfolioAnalyzer.Core.Validators;
 using PortfolioAnalyzer.Api.Services;
 
 namespace PortfolioAnalyzer.Api.Controllers
@@ -28,12 +29,26 @@ namespace PortfolioAnalyzer.Api.Controllers
         {
             try
             {
-                var price = _dataService.GetCurrentPrice(symbol.ToUpper());
-                return Ok(new { Symbol = symbol.ToUpper(), Price = Math.Round(price, 2), Timestamp = DateTime.UtcNow });
+                // Validate ticker symbol
+                if (!TickerValidator.IsValidTickerSymbol(symbol))
+                {
+                    return BadRequest(new { error = TickerValidator.GetTickerErrorMessage(symbol) });
+                }
+
+                var symbolUpper = symbol.ToUpper();
+                var price = _dataService.GetCurrentPrice(symbolUpper);
+
+                // Check if price fetching failed
+                if (price == 0)
+                {
+                    return NotFound(new { error = $"Could not fetch price for symbol '{symbolUpper}'. Symbol may not exist or market data is unavailable." });
+                }
+
+                return Ok(new { Symbol = symbolUpper, Price = Math.Round(price, 2), Timestamp = DateTime.UtcNow });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = $"Failed to fetch stock price: {ex.Message}" });
             }
         }
 
@@ -63,6 +78,31 @@ namespace PortfolioAnalyzer.Api.Controllers
                 if (request?.Holdings == null || !request.Holdings.Any())
                 {
                     return BadRequest(new { error = "Holdings are required" });
+                }
+
+                // Validate purchase date
+                if (!TickerValidator.IsValidPurchaseDate(request.PurchaseDate))
+                {
+                    return BadRequest(new { error = TickerValidator.GetPurchaseDateErrorMessage(request.PurchaseDate) });
+                }
+
+                // Validate each holding
+                var validationErrors = new List<string>();
+                foreach (var holding in request.Holdings)
+                {
+                    if (!TickerValidator.IsValidTickerSymbol(holding.Symbol))
+                    {
+                        validationErrors.Add(TickerValidator.GetTickerErrorMessage(holding.Symbol));
+                    }
+                    if (!TickerValidator.IsValidQuantity(holding.Quantity))
+                    {
+                        validationErrors.Add($"{holding.Symbol}: {TickerValidator.GetQuantityErrorMessage(holding.Quantity)}");
+                    }
+                }
+
+                if (validationErrors.Any())
+                {
+                    return BadRequest(new { error = "Validation failed", details = validationErrors });
                 }
 
                 // Convert to dictionary format
@@ -99,9 +139,17 @@ namespace PortfolioAnalyzer.Api.Controllers
 
                 return Ok(summary);
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = $"Portfolio calculation failed: {ex.Message}" });
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = $"An unexpected error occurred: {ex.Message}" });
             }
         }
 

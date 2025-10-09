@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { portfolioService, type HoldingInput } from '@/api/portfolioService'
 import type { PortfolioSummary } from '@/types/portfolio'
+import {
+  isValidTickerSymbol,
+  isValidQuantity,
+  isValidPurchaseDate,
+  getTickerErrorMessage,
+  getQuantityErrorMessage,
+} from '@/utils/validation'
 
 const emit = defineEmits<{
   calculated: [summary: PortfolioSummary]
@@ -30,6 +37,17 @@ const removeHolding = (index: number) => {
   holdings.value.splice(index, 1)
 }
 
+// Validation helpers
+const isSymbolValid = (symbol: string) => isValidTickerSymbol(symbol)
+const isQuantityValid = (quantity: number) => isValidQuantity(quantity)
+
+// Check if form has any validation errors
+const hasValidationErrors = computed(() => {
+  return holdings.value.some(
+    (h) => h.symbol.trim() !== '' && (!isSymbolValid(h.symbol) || !isQuantityValid(h.quantity)),
+  )
+})
+
 const calculatePortfolio = async () => {
   // Validate
   const validHoldings = holdings.value.filter((h) => h.symbol.trim() !== '' && h.quantity > 0)
@@ -44,6 +62,27 @@ const calculatePortfolio = async () => {
     return
   }
 
+  if (!isValidPurchaseDate(purchaseDate.value)) {
+    emit('error', 'Please select a valid purchase date (must be in the past)')
+    return
+  }
+
+  // Check for validation errors
+  const errors: string[] = []
+  validHoldings.forEach((h) => {
+    if (!isSymbolValid(h.symbol)) {
+      errors.push(getTickerErrorMessage(h.symbol))
+    }
+    if (!isQuantityValid(h.quantity)) {
+      errors.push(`${h.symbol}: ${getQuantityErrorMessage(h.quantity)}`)
+    }
+  })
+
+  if (errors.length > 0) {
+    emit('error', errors.join('; '))
+    return
+  }
+
   try {
     loading.value = true
     const result = await portfolioService.calculatePortfolio({
@@ -54,8 +93,16 @@ const calculatePortfolio = async () => {
       purchaseDate: purchaseDate.value,
     })
     emit('calculated', result)
-  } catch (err) {
-    emit('error', err instanceof Error ? err.message : 'Failed to calculate portfolio')
+  } catch (err: any) {
+    // Extract error message from API response
+    const errorMessage = err?.response?.data?.error || err.message || 'Failed to calculate portfolio'
+    const errorDetails = err?.response?.data?.details
+
+    if (errorDetails && Array.isArray(errorDetails)) {
+      emit('error', `${errorMessage}: ${errorDetails.join('; ')}`)
+    } else {
+      emit('error', errorMessage)
+    }
   } finally {
     loading.value = false
   }
@@ -83,13 +130,22 @@ const calculatePortfolio = async () => {
             type="text"
             placeholder="AAPL"
             class="input symbol-input"
+            :class="{
+              'input-error':
+                holding.symbol.trim() !== '' && !isSymbolValid(holding.symbol),
+            }"
             maxlength="10"
+            @input="holding.symbol = holding.symbol.toUpperCase()"
           />
           <input
             v-model.number="holding.quantity"
             type="number"
             placeholder="10"
             class="input quantity-input"
+            :class="{
+              'input-error':
+                holding.quantity > 0 && !isQuantityValid(holding.quantity),
+            }"
             min="0"
             step="0.01"
           />
@@ -117,7 +173,7 @@ const calculatePortfolio = async () => {
         />
       </div>
 
-      <button @click="calculatePortfolio" :disabled="loading" class="btn-calculate">
+      <button @click="calculatePortfolio" :disabled="loading || hasValidationErrors" class="btn-calculate">
         {{ loading ? 'Calculating...' : 'Calculate Portfolio' }}
       </button>
     </div>
@@ -200,6 +256,16 @@ const calculatePortfolio = async () => {
 
 .input::placeholder {
   color: #999;
+}
+
+.input-error {
+  border-color: #ef4444; /* red */
+  background: #fef2f2; /* light red background */
+}
+
+.input-error:focus {
+  border-color: #dc2626; /* darker red */
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
 }
 
 .symbol-input {
