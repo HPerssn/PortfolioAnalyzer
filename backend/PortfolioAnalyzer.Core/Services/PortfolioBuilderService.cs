@@ -110,5 +110,32 @@ namespace PortfolioAnalyzer.Core.Services
 
             return await BuildFromTickersAsync(tickers, onProgress);
         }
+
+        /// <summary>
+        /// Builds a portfolio from a SavedPortfolio object with nullable purchase dates.
+        /// Implements fallback logic: if a holding's PurchaseDate is null, uses the portfolio's default PurchaseDate.
+        /// </summary>
+        /// <param name="savedPortfolio">The saved portfolio with holdings</param>
+        /// <param name="onProgress">Optional callback for progress updates</param>
+        /// <returns>A fully populated Portfolio object</returns>
+        public async Task<Portfolio> BuildFromSavedPortfolioAsync(UserPortfolio savedPortfolio, Action<string>? onProgress = null)
+        {
+            if (savedPortfolio == null)
+                throw new ArgumentNullException(nameof(savedPortfolio));
+
+            if (savedPortfolio.Holdings == null || !savedPortfolio.Holdings.Any())
+                throw new ArgumentException("Portfolio must have at least one holding", nameof(savedPortfolio));
+
+            // Convert SavedHoldings to TickerConfigs with fallback logic
+            var tickers = savedPortfolio.Holdings.Select(h => new TickerConfig
+            {
+                Symbol = h.Symbol,
+                Quantity = h.Quantity,
+                // Fallback: use holding's date if specified, otherwise use portfolio's default date
+                PurchaseDate = h.PurchaseDate ?? savedPortfolio.PurchaseDate
+            }).ToList();
+
+            return await BuildFromTickersAsync(tickers, onProgress);
+        }
     }
 }

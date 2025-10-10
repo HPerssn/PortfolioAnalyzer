@@ -35,12 +35,19 @@ const loading = ref(false)
 const showSaveModal = ref(false)
 const portfolioName = ref('')
 const saving = ref(false)
+const loadedPortfolioId = ref<number | null>(null) // Track which portfolio is loaded
+const loadedPortfolioName = ref<string | null>(null) // Track original name
 
 // Expose method to load portfolio data from parent component
 const loadPortfolioData = (
+  portfolioId: number,
+  portfolioNameValue: string,
   loadedHoldings: Array<{ symbol: string; quantity: number }>,
   loadedPurchaseDate: string,
 ) => {
+  loadedPortfolioId.value = portfolioId
+  portfolioName.value = portfolioNameValue
+  loadedPortfolioName.value = portfolioNameValue // Store original name
   holdings.value = loadedHoldings.map((h) => ({
     symbol: h.symbol,
     quantity: h.quantity,
@@ -48,9 +55,23 @@ const loadPortfolioData = (
   purchaseDate.value = loadedPurchaseDate
 }
 
-// Expose the method to parent via defineExpose
+// Clear loaded portfolio and reset to new portfolio mode
+const clearLoadedPortfolio = () => {
+  loadedPortfolioId.value = null
+  loadedPortfolioName.value = null
+  portfolioName.value = ''
+  holdings.value = [
+    { symbol: 'AAPL', quantity: 10 },
+    { symbol: 'GOOGL', quantity: 5 },
+    { symbol: 'MSFT', quantity: 8 },
+  ]
+  purchaseDate.value = '2024-01-01'
+}
+
+// Expose the methods to parent via defineExpose
 defineExpose({
   loadPortfolioData,
+  clearLoadedPortfolio,
 })
 
 const addHolding = () => {
@@ -70,6 +91,15 @@ const hasValidationErrors = computed(() => {
   return holdings.value.some(
     (h) => h.symbol.trim() !== '' && (!isSymbolValid(h.symbol) || !isQuantityValid(h.quantity)),
   )
+})
+
+// Check if we're editing an existing portfolio
+const isEditing = computed(() => loadedPortfolioId.value !== null)
+
+// Check if name has changed (means save as new, not update)
+const nameHasChanged = computed(() => {
+  if (!loadedPortfolioName.value) return false
+  return portfolioName.value.trim() !== loadedPortfolioName.value.trim()
 })
 
 const calculatePortfolio = async () => {
@@ -135,12 +165,14 @@ const calculatePortfolio = async () => {
 
 const openSaveModal = () => {
   showSaveModal.value = true
-  portfolioName.value = ''
+  // Keep current name if editing, clear if creating new
+  if (!loadedPortfolioId.value) {
+    portfolioName.value = ''
+  }
 }
 
 const closeSaveModal = () => {
   showSaveModal.value = false
-  portfolioName.value = ''
 }
 
 const savePortfolio = async () => {
@@ -158,16 +190,41 @@ const savePortfolio = async () => {
 
   try {
     saving.value = true
-    await portfolioStore.savePortfolio(
-      portfolioName.value.trim(),
-      purchaseDate.value,
-      validHoldings.map((h) => ({
-        symbol: h.symbol.toUpperCase(),
-        quantity: h.quantity,
-      })),
-    )
+
+    // If name has changed, always save as new portfolio (clone)
+    // Otherwise, update if we have an ID, or create new if we don't
+    if (loadedPortfolioId.value && !nameHasChanged.value) {
+      // Update existing portfolio (name unchanged)
+      await portfolioStore.updatePortfolio(
+        loadedPortfolioId.value,
+        portfolioName.value.trim(),
+        purchaseDate.value,
+        validHoldings.map((h) => ({
+          symbol: h.symbol.toUpperCase(),
+          quantity: h.quantity,
+        })),
+      )
+    } else {
+      // Create new portfolio (either no ID, or name changed = clone)
+      await portfolioStore.savePortfolio(
+        portfolioName.value.trim(),
+        purchaseDate.value,
+        validHoldings.map((h) => ({
+          symbol: h.symbol.toUpperCase(),
+          quantity: h.quantity,
+        })),
+      )
+
+      // After creating new, clear the loaded portfolio state
+      loadedPortfolioId.value = null
+      loadedPortfolioName.value = null
+    }
+
     closeSaveModal()
     emit('saved')
+
+    // Automatically calculate portfolio after saving
+    await calculatePortfolio()
   } catch (err: any) {
     emit('error', err.message || 'Failed to save portfolio')
   } finally {
@@ -259,7 +316,11 @@ const savePortfolio = async () => {
     <div v-if="showSaveModal" class="modal-overlay" @click.self="closeSaveModal">
       <div class="modal">
         <div class="modal-header">
-          <h3>Save Portfolio</h3>
+          <h3>
+            {{
+              isEditing && !nameHasChanged ? 'Update Portfolio' : 'Save Portfolio'
+            }}
+          </h3>
           <button @click="closeSaveModal" class="modal-close">×</button>
         </div>
         <div class="modal-body">
@@ -273,6 +334,9 @@ const savePortfolio = async () => {
             @keyup.enter="savePortfolio"
             autofocus
           />
+          <p v-if="nameHasChanged" class="name-changed-hint">
+            💡 Name changed - this will save as a new portfolio
+          </p>
         </div>
         <div class="modal-footer">
           <button @click="closeSaveModal" class="btn-cancel">Cancel</button>
@@ -281,7 +345,15 @@ const savePortfolio = async () => {
             :disabled="!portfolioName.trim() || saving"
             class="btn-confirm"
           >
-            {{ saving ? 'Saving...' : 'Save' }}
+            {{
+              saving
+                ? isEditing && !nameHasChanged
+                  ? 'Updating...'
+                  : 'Saving...'
+                : isEditing && !nameHasChanged
+                  ? 'Update'
+                  : 'Save as New'
+            }}
           </button>
         </div>
       </div>
@@ -583,6 +655,17 @@ const savePortfolio = async () => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+.name-changed-hint {
+  margin: var(--spacing-xs) 0 0 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 4px;
+  color: #c2410c;
+  font-size: var(--font-size-xs);
+  font-weight: 400;
 }
 
 .modal-footer {

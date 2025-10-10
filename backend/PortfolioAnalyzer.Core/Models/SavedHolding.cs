@@ -11,6 +11,7 @@ namespace PortfolioAnalyzer.Core.Models
         public int PortfolioId { get; set; } // Foreign key to UserPortfolio
         public required string Symbol { get; set; }
         public decimal Quantity { get; set; }
+        public DateTime? PurchaseDate { get; set; } // Optional - null means use portfolio's default date
 
         // Navigation property - belongs to one portfolio
         [JsonIgnore]

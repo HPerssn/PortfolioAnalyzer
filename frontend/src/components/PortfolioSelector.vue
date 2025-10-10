@@ -3,7 +3,13 @@ import { ref, onMounted } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 
 const emit = defineEmits<{
-  portfolioLoaded: [holdings: Array<{ symbol: string; quantity: number }>, purchaseDate: string]
+  portfolioLoaded: [
+    portfolioId: number,
+    name: string,
+    holdings: Array<{ symbol: string; quantity: number }>,
+    purchaseDate: string,
+  ]
+  newPortfolio: []
 }>()
 
 const portfolioStore = usePortfolioStore()
@@ -25,11 +31,23 @@ const toggleDropdown = () => {
   showDeleteConfirm.value = null
 }
 
+const createNewPortfolio = () => {
+  portfolioStore.selectPortfolio(null)
+  emit('newPortfolio')
+  showDropdown.value = false
+}
+
 const loadPortfolio = async (id: number) => {
   const portfolio = await portfolioStore.fetchPortfolioById(id)
   if (portfolio) {
     portfolioStore.selectPortfolio(id)
-    emit('portfolioLoaded', portfolio.holdings, portfolio.purchaseDate.split('T')[0])
+    emit(
+      'portfolioLoaded',
+      portfolio.id,
+      portfolio.name,
+      portfolio.holdings,
+      portfolio.purchaseDate.split('T')[0],
+    )
   }
   showDropdown.value = false
 }
@@ -65,6 +83,10 @@ const deletePortfolio = async (id: number, event: Event) => {
     </button>
 
     <div v-if="showDropdown" class="dropdown" @click.stop>
+      <button @click="createNewPortfolio" class="new-portfolio-btn">
+        <span class="plus-icon">+</span>
+        New Portfolio
+      </button>
       <div v-if="portfolioStore.savedPortfolios.length === 0" class="dropdown-empty">
         No saved portfolios
       </div>
@@ -148,6 +170,42 @@ const deletePortfolio = async (id: number, event: Event) => {
   z-index: 100;
   max-height: 400px;
   overflow-y: auto;
+}
+
+.new-portfolio-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: white;
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  color: #f97316;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.new-portfolio-btn:hover {
+  background: #fff7f0;
+}
+
+.plus-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #f97316;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 500;
 }
 
 .dropdown-empty {

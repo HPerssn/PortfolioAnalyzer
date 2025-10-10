@@ -95,6 +95,48 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function updatePortfolio(
+    id: number,
+    name: string,
+    purchaseDate: string,
+    holdings: Array<{ symbol: string; quantity: number; purchaseDate?: string }>,
+  ) {
+    isLoading.value = true
+    error.value = null
+    try {
+      const response = await fetch(`${API_BASE}/api/SavedPortfolios/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          purchaseDate,
+          holdings,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update portfolio')
+      }
+
+      const updated = await response.json()
+      const index = savedPortfolios.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        savedPortfolios.value[index] = updated
+      }
+
+      return updated
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Unknown error'
+      console.error('Failed to update portfolio:', e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function deletePortfolio(id: number) {
     isLoading.value = true
     error.value = null
@@ -152,6 +194,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     fetchPortfolios,
     fetchPortfolioById,
     savePortfolio,
+    updatePortfolio,
     deletePortfolio,
     selectPortfolio,
     loadLastSelectedPortfolio,

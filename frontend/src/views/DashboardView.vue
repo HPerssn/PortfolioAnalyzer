@@ -52,12 +52,22 @@ const handleSaved = async () => {
 }
 
 const handlePortfolioLoaded = (
+  portfolioId: number,
+  name: string,
   holdings: Array<{ symbol: string; quantity: number }>,
   purchaseDate: string,
 ) => {
   // Update the form with loaded portfolio data
   if (inputFormRef.value) {
-    inputFormRef.value.loadPortfolioData(holdings, purchaseDate)
+    inputFormRef.value.loadPortfolioData(portfolioId, name, holdings, purchaseDate)
+  }
+  showForm.value = true
+}
+
+const handleNewPortfolio = () => {
+  // Clear the form to create a new portfolio
+  if (inputFormRef.value) {
+    inputFormRef.value.clearLoadedPortfolio()
   }
   showForm.value = true
 }
@@ -96,7 +106,10 @@ onMounted(() => {
         <div class="accent-line"></div>
       </div>
       <div class="header-actions">
-        <PortfolioSelector @portfolio-loaded="handlePortfolioLoaded" />
+        <PortfolioSelector
+          @portfolio-loaded="handlePortfolioLoaded"
+          @new-portfolio="handleNewPortfolio"
+        />
         <button @click="toggleForm" class="btn-toggle-form">
           {{ showForm ? 'Hide Form' : 'Edit Portfolio' }}
         </button>

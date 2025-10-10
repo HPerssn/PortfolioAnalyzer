@@ -42,4 +42,5 @@ export interface SavedHolding {
   portfolioId: number
   symbol: string
   quantity: number
+  purchaseDate?: string // Optional - null means use portfolio's default date
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PortfolioAnalyzer.Core.Data;
 using PortfolioAnalyzer.Core.Models;
+using PortfolioAnalyzer.Core.Services;
 
 namespace PortfolioAnalyzer.Api.Controllers
 {
@@ -12,10 +13,12 @@ namespace PortfolioAnalyzer.Api.Controllers
     public class SavedPortfoliosController : ControllerBase
     {
         private readonly PortfolioRepository _repository;
+        private readonly PortfolioBuilderService _portfolioBuilder;
 
         public SavedPortfoliosController(PortfolioRepository repository)
         {
             _repository = repository;
+            _portfolioBuilder = new PortfolioBuilderService();
         }
 
         /// <summary>
@@ -82,7 +85,8 @@ namespace PortfolioAnalyzer.Api.Controllers
                     Holdings = request.Holdings.Select(h => new SavedHolding
                     {
                         Symbol = h.Symbol.ToUpper(),
-                        Quantity = h.Quantity
+                        Quantity = h.Quantity,
+                        PurchaseDate = h.PurchaseDate // Optional - can be null
                     }).ToList()
                 };
 
@@ -92,6 +96,46 @@ namespace PortfolioAnalyzer.Api.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = "Failed to save portfolio", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Update an existing portfolio
+        /// </summary>
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] SavePortfolioRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Name))
+                {
+                    return BadRequest(new { error = "Portfolio name is required" });
+                }
+
+                if (request.Holdings == null || request.Holdings.Count == 0)
+                {
+                    return BadRequest(new { error = "At least one holding is required" });
+                }
+
+                var holdings = request.Holdings.Select(h => new SavedHolding
+                {
+                    Symbol = h.Symbol.ToUpper(),
+                    Quantity = h.Quantity,
+                    PurchaseDate = h.PurchaseDate
+                }).ToList();
+
+                var updated = await _repository.UpdateAsync(id, request.Name, request.PurchaseDate, holdings);
+
+                if (updated == null)
+                {
+                    return NotFound(new { error = $"Portfolio with ID {id} not found" });
+                }
+
+                return Ok(updated);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to update portfolio", details = ex.Message });
             }
         }
 
@@ -115,6 +159,56 @@ namespace PortfolioAnalyzer.Api.Controllers
                 return StatusCode(500, new { error = "Failed to delete portfolio", details = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Calculate portfolio performance for a saved portfolio.
+        /// Uses fallback logic: if a holding's PurchaseDate is null, uses the portfolio's default date.
+        /// </summary>
+        [HttpGet("{id}/calculate")]
+        public async Task<IActionResult> Calculate(int id)
+        {
+            try
+            {
+                var portfolio = await _repository.GetByIdAsync(id);
+                if (portfolio == null)
+                {
+                    return NotFound(new { error = $"Portfolio with ID {id} not found" });
+                }
+
+                // Build portfolio with fallback logic for nullable purchase dates
+                var calculatedPortfolio = await _portfolioBuilder.BuildFromSavedPortfolioAsync(portfolio);
+
+                // Build response from calculated portfolio
+                var assets = calculatedPortfolio.Assets.Select(asset => new
+                {
+                    Symbol = asset.Symbol,
+                    Quantity = asset.Quantity,
+                    AverageCost = Math.Round(asset.AverageCost, 2),
+                    CurrentPrice = Math.Round(asset.CurrentPrice, 2),
+                    TotalCost = Math.Round(asset.GetTotalCost(), 2),
+                    CurrentValue = Math.Round(asset.GetCurrentValue(), 2),
+                    Return = Math.Round(asset.GetReturn(), 2),
+                    ReturnPercentage = Math.Round(asset.GetReturnPercentage(), 2)
+                }).ToList();
+
+                var summary = new
+                {
+                    TotalValue = Math.Round(calculatedPortfolio.GetTotalValue(), 2),
+                    TotalCost = Math.Round(calculatedPortfolio.GetTotalCost(), 2),
+                    TotalReturn = Math.Round(calculatedPortfolio.GetTotalReturn(), 2),
+                    TotalReturnPercentage = Math.Round(calculatedPortfolio.GetTotalReturnPercentage(), 2),
+                    AssetCount = calculatedPortfolio.Assets.Count,
+                    Assets = assets,
+                    LastUpdated = DateTime.UtcNow
+                };
+
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to calculate portfolio", details = ex.Message });
+            }
+        }
     }
 
     /// <summary>
@@ -134,5 +228,6 @@ namespace PortfolioAnalyzer.Api.Controllers
     {
         public required string Symbol { get; set; }
         public decimal Quantity { get; set; }
+        public DateTime? PurchaseDate { get; set; } // Optional - null means use portfolio's default date
     }
 }
