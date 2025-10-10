@@ -16,11 +16,12 @@ namespace PortfolioAnalyzer.Core.Data
         }
 
         /// <summary>
-        /// Get all saved portfolios (metadata only, no holdings)
+        /// Get all saved portfolios with their holdings
         /// </summary>
         public async Task<List<UserPortfolio>> GetAllAsync()
         {
             return await _context.Portfolios
+                .Include(p => p.Holdings)
                 .OrderByDescending(p => p.CreatedDate)
                 .ToListAsync();
         }

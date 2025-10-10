@@ -39,7 +39,7 @@ namespace PortfolioAnalyzer.Core.Data
             modelBuilder.Entity<SavedHolding>(entity =>
             {
                 entity.HasKey(h => h.Id);
-                entity.Property(h => h.Symbol).IsRequired().HasMaxLength(10);
+                entity.Property(h => h.Symbol).IsRequired().HasMaxLength(19);
                 entity.Property(h => h.Quantity).IsRequired().HasPrecision(18, 8);
             });
         }

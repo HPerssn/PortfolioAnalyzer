@@ -55,8 +55,10 @@ const handlePortfolioLoaded = (
   holdings: Array<{ symbol: string; quantity: number }>,
   purchaseDate: string,
 ) => {
-  // Update the form with loaded portfolio data (TODO: expose method on PortfolioInputForm)
-  // For now, just show the form
+  // Update the form with loaded portfolio data
+  if (inputFormRef.value) {
+    inputFormRef.value.loadPortfolioData(holdings, purchaseDate)
+  }
   showForm.value = true
 }
 
@@ -110,7 +112,7 @@ onMounted(() => {
       </div>
     </header>
 
-    <div v-if="showForm" class="form-container">
+    <div v-show="showForm" class="form-container">
       <PortfolioInputForm
         ref="inputFormRef"
         @calculated="handleCalculated"

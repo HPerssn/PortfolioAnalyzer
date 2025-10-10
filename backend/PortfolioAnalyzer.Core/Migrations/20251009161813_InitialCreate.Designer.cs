@@ -35,7 +35,7 @@ namespace PortfolioAnalyzer.Core.Migrations
 
                     b.Property<string>("Symbol")
                         .IsRequired()
-                        .HasMaxLength(10)
+                        .HasMaxLength(19)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

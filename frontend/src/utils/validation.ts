@@ -36,8 +36,8 @@ export function getTickerErrorMessage(symbol: string): string {
 
   const trimmed = symbol.trim()
 
-  if (trimmed.length > 10) {
-    return `Ticker symbol '${trimmed}' is too long (max 10 characters)`
+  if (trimmed.length > 20) {
+    return `Ticker symbol '${trimmed}' is too long (max 20 characters)`
   }
 
   if (trimmed.length < 1) {

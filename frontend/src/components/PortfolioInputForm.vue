@@ -36,6 +36,23 @@ const showSaveModal = ref(false)
 const portfolioName = ref('')
 const saving = ref(false)
 
+// Expose method to load portfolio data from parent component
+const loadPortfolioData = (
+  loadedHoldings: Array<{ symbol: string; quantity: number }>,
+  loadedPurchaseDate: string,
+) => {
+  holdings.value = loadedHoldings.map((h) => ({
+    symbol: h.symbol,
+    quantity: h.quantity,
+  }))
+  purchaseDate.value = loadedPurchaseDate
+}
+
+// Expose the method to parent via defineExpose
+defineExpose({
+  loadPortfolioData,
+})
+
 const addHolding = () => {
   holdings.value.push({ symbol: '', quantity: 0 })
 }
@@ -102,7 +119,8 @@ const calculatePortfolio = async () => {
     emit('calculated', result)
   } catch (err: any) {
     // Extract error message from API response
-    const errorMessage = err?.response?.data?.error || err.message || 'Failed to calculate portfolio'
+    const errorMessage =
+      err?.response?.data?.error || err.message || 'Failed to calculate portfolio'
     const errorDetails = err?.response?.data?.details
 
     if (errorDetails && Array.isArray(errorDetails)) {
@@ -180,10 +198,9 @@ const savePortfolio = async () => {
             placeholder="AAPL"
             class="input symbol-input"
             :class="{
-              'input-error':
-                holding.symbol.trim() !== '' && !isSymbolValid(holding.symbol),
+              'input-error': holding.symbol.trim() !== '' && !isSymbolValid(holding.symbol),
             }"
-            maxlength="10"
+            maxlength="20"
             @input="holding.symbol = holding.symbol.toUpperCase()"
           />
           <input
@@ -193,7 +210,9 @@ const savePortfolio = async () => {
             class="input quantity-input"
             :class="{
               'input-error':
-                holding.quantity != null && holding.quantity !== 0 && !isQuantityValid(holding.quantity),
+                holding.quantity != null &&
+                holding.quantity !== 0 &&
+                !isQuantityValid(holding.quantity),
             }"
             min="0"
             step="0.01"
@@ -223,7 +242,11 @@ const savePortfolio = async () => {
       </div>
 
       <div class="button-group">
-        <button @click="calculatePortfolio" :disabled="loading || hasValidationErrors" class="btn-calculate">
+        <button
+          @click="calculatePortfolio"
+          :disabled="loading || hasValidationErrors"
+          class="btn-calculate"
+        >
           {{ loading ? 'Calculating...' : 'Calculate Portfolio' }}
         </button>
         <button @click="openSaveModal" :disabled="hasValidationErrors" class="btn-save">
@@ -253,7 +276,11 @@ const savePortfolio = async () => {
         </div>
         <div class="modal-footer">
           <button @click="closeSaveModal" class="btn-cancel">Cancel</button>
-          <button @click="savePortfolio" :disabled="!portfolioName.trim() || saving" class="btn-confirm">
+          <button
+            @click="savePortfolio"
+            :disabled="!portfolioName.trim() || saving"
+            class="btn-confirm"
+          >
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
         </div>

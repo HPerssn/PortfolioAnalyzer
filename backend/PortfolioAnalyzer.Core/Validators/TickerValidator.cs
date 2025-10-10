@@ -8,9 +8,8 @@ namespace PortfolioAnalyzer.Core.Validators
     /// </summary>
     public static class TickerValidator
     {
-        // Ticker symbols: 1-10 chars, letters/numbers/hyphens/dots (e.g., AAPL, INVE-B.ST, BRK.A)
-        private static readonly Regex TickerRegex = new Regex(@"^[A-Z0-9][A-Z0-9.\-]{0,9}$", RegexOptions.Compiled);
-
+        // Ticker symbols: 1-20 chars, must start with letter/number, then allows letters/numbers/hyphens/dots (e.g., AAPL, INVE-B.ST, BRK.A)
+        private static readonly Regex TickerRegex = new Regex(@"^[A-Z0-9][A-Z0-9.\-]{0,19}$", RegexOptions.Compiled);
         /// <summary>
         /// Validates a stock ticker symbol format.
         /// </summary>
@@ -55,13 +54,13 @@ namespace PortfolioAnalyzer.Core.Validators
             if (string.IsNullOrWhiteSpace(symbol))
                 return "Ticker symbol cannot be empty";
 
-            if (symbol.Length > 10)
-                return $"Ticker symbol '{symbol}' is too long (max 10 characters)";
+            if (symbol.Length > 20)
+                return $"Ticker symbol '{symbol}' is too long (max 20 characters)";
 
             if (symbol.Length < 1)
                 return "Ticker symbol is too short";
 
-            return $"Invalid ticker symbol '{symbol}'. Must be 1-10 uppercase letters/numbers/dots/hyphens (e.g., AAPL, INVE-B.ST)";
+            return $"Invalid ticker symbol '{symbol}'. Must be 1-20 uppercase letters/numbers/dots/hyphens (e.g., AAPL, INVE-B.ST)";
         }
 
         /// <summary>

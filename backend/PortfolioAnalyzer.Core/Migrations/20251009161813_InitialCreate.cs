@@ -33,7 +33,7 @@ namespace PortfolioAnalyzer.Core.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     PortfolioId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Symbol = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
+                    Symbol = table.Column<string>(type: "TEXT", maxLength: 19, nullable: false),
                     Quantity = table.Column<decimal>(type: "TEXT", precision: 18, scale: 8, nullable: false)
                 },
                 constraints: table =>
