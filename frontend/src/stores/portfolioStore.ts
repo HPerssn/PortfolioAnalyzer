@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SavedPortfolio } from '@/types/portfolio'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5129'
+// Use the same environment variable as the rest of the app
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5129/api'
 
 export const usePortfolioStore = defineStore('portfolio', () => {
   // State
@@ -22,7 +23,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/SavedPortfolios`)
+      const response = await fetch(`${API_BASE}/SavedPortfolios`)
       if (!response.ok) {
         throw new Error(`Failed to fetch portfolios: ${response.statusText}`)
       }
@@ -39,7 +40,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/SavedPortfolios/${id}`)
+      const response = await fetch(`${API_BASE}/SavedPortfolios/${id}`)
       if (!response.ok) {
         throw new Error(`Failed to fetch portfolio: ${response.statusText}`)
       }
@@ -61,7 +62,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/SavedPortfolios`, {
+      const response = await fetch(`${API_BASE}/SavedPortfolios`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/SavedPortfolios/${id}`, {
+      const response = await fetch(`${API_BASE}/SavedPortfolios/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch(`${API_BASE}/api/SavedPortfolios/${id}`, {
+      const response = await fetch(`${API_BASE}/SavedPortfolios/${id}`, {
         method: 'DELETE',
       })
 
