@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
 import type { PortfolioSummary, PortfolioHistoryPoint } from '@/types/portfolio'
-import PixelIcon from '@/components/PixelIcon.vue'
 import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
+import StatsGrid from '@/components/StatsGrid.vue'
+import HoldingsList from '@/components/HoldingsList.vue'
+import AllocationList from '@/components/AllocationList.vue'
+import ActivityList from '@/components/ActivityList.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
-import { formatCurrency, formatPercentage } from '@/utils/formatters'
-import { ASSET_COLORS, DEFAULT_COLOR } from '@/constants/colors'
 
 const portfolioStore = usePortfolioStore()
 const portfolio = ref<PortfolioSummary | null>(null)
@@ -97,10 +98,12 @@ const toggleForm = () => {
   showForm.value = !showForm.value
 }
 
-const returnClass = computed(() => {
-  if (!portfolio.value) return ''
-  return portfolio.value.totalReturn >= 0 ? 'positive' : 'negative'
-})
+// Sample activity data
+const activities = [
+  { type: 'buy' as const, symbol: 'AAPL', quantity: 10, date: 'Jan 1' },
+  { type: 'buy' as const, symbol: 'GOOGL', quantity: 5, date: 'Jan 1' },
+  { type: 'buy' as const, symbol: 'MSFT', quantity: 8, date: 'Jan 1' },
+]
 
 onMounted(() => {
   fetchPortfolio()
@@ -156,49 +159,12 @@ onMounted(() => {
 
     <div v-else-if="portfolio" class="dashboard-content">
       <!-- Stats Cards -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <PixelIcon type="dollar" :size="40" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">Total Value</div>
-            <div class="stat-value">{{ formatCurrency(portfolio.totalValue) }}</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">
-            <PixelIcon type="bar-chart" :size="40" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">Day Change</div>
-            <div class="stat-value">$0.00</div>
-            <div class="stat-change">+0.00%</div>
-          </div>
-        </div>
-
-        <div class="stat-card" :class="returnClass">
-          <div class="stat-icon">
-            <PixelIcon type="arrow-up" :size="40" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">Total Return</div>
-            <div class="stat-value">{{ formatCurrency(portfolio.totalReturn) }}</div>
-            <div class="stat-change">{{ formatPercentage(portfolio.totalReturnPercentage) }}</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">
-            <PixelIcon type="pie-chart" :size="40" />
-          </div>
-          <div class="stat-info">
-            <div class="stat-label">Holdings</div>
-            <div class="stat-value">{{ portfolio.assetCount }}</div>
-          </div>
-        </div>
-      </div>
+      <StatsGrid
+        :total-value="portfolio.totalValue"
+        :total-return="portfolio.totalReturn"
+        :total-return-percentage="portfolio.totalReturnPercentage"
+        :asset-count="portfolio.assetCount"
+      />
 
       <!-- Main Content Area -->
       <div class="main-content">
@@ -220,85 +186,14 @@ onMounted(() => {
 
         <!-- Sidebar (Right, 1/3) -->
         <div class="sidebar">
-          <!-- Holdings Section -->
-          <div class="sidebar-section">
-            <h3>Holdings</h3>
-            <div class="holdings-list">
-              <div v-for="asset in portfolio.assets" :key="asset.symbol" class="holding-item">
-                <div class="holding-header">
-                  <span class="holding-symbol">{{ asset.symbol }}</span>
-                  <span class="holding-value">{{ formatCurrency(asset.currentValue) }}</span>
-                </div>
-                <div class="holding-details">
-                  <span class="holding-quantity">{{ asset.quantity }} shares</span>
-                  <span class="holding-return" :class="asset.return >= 0 ? 'positive' : 'negative'">
-                    {{ formatPercentage(asset.returnPercentage) }}
-                  </span>
-                </div>
-                <div class="progress-bar">
-                  <div
-                    class="progress-fill"
-                    :style="{ width: `${Math.abs(asset.returnPercentage)}%` }"
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Allocation Section -->
-          <div class="sidebar-section">
-            <h3>Allocation</h3>
-            <div class="allocation-list">
-              <div v-for="asset in portfolio.assets" :key="asset.symbol" class="allocation-item">
-                <div
-                  class="allocation-color"
-                  :style="{ background: getAssetColor(asset.symbol) }"
-                ></div>
-                <span class="allocation-label">{{ asset.symbol }}</span>
-                <span class="allocation-percent"
-                  >{{ ((asset.currentValue / portfolio.totalValue) * 100).toFixed(1) }}%</span
-                >
-              </div>
-            </div>
-          </div>
-
-          <!-- Activity Section -->
-          <div class="sidebar-section">
-            <h3>Activity</h3>
-            <div class="activity-list">
-              <div class="activity-item">
-                <span class="activity-type buy">BUY</span>
-                <span class="activity-text">AAPL · 10 shares</span>
-                <span class="activity-date">Jan 1</span>
-              </div>
-              <div class="activity-item">
-                <span class="activity-type buy">BUY</span>
-                <span class="activity-text">GOOGL · 5 shares</span>
-                <span class="activity-date">Jan 1</span>
-              </div>
-              <div class="activity-item">
-                <span class="activity-type buy">BUY</span>
-                <span class="activity-text">MSFT · 8 shares</span>
-                <span class="activity-date">Jan 1</span>
-              </div>
-            </div>
-          </div>
+          <HoldingsList :assets="portfolio.assets" />
+          <AllocationList :assets="portfolio.assets" :total-value="portfolio.totalValue" />
+          <ActivityList :activities="activities" />
         </div>
       </div>
     </div>
   </div>
 </template>
-
-<script lang="ts">
-export default {
-  methods: {
-    getAssetColor(symbol: string): string {
-      const hash = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-      return ASSET_COLORS[hash % ASSET_COLORS.length] || DEFAULT_COLOR
-    },
-  },
-}
-</script>
 
 <style scoped>
 .dashboard {
@@ -431,64 +326,6 @@ export default {
   overflow: hidden;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: var(--color-bg-base);
-}
-
-.stat-card {
-  display: flex;
-  gap: var(--spacing-lg);
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-lg);
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.stat-icon {
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.stat-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.stat-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 400;
-  margin-bottom: 2px;
-}
-
-.stat-value {
-  font-size: var(--font-size-lg);
-  font-weight: 300;
-  color: var(--color-text-primary);
-  letter-spacing: -0.01em;
-}
-
-.stat-change {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  font-weight: 400;
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
 .main-content {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -574,178 +411,10 @@ export default {
   background: #a3a3a3;
 }
 
-.sidebar-section {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md) var(--spacing-lg);
-}
-
-.sidebar-section h3 {
-  font-size: var(--font-size-md);
-  font-weight: 400;
-  color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-lg) 0;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-}
-
-.holdings-list,
-.allocation-list,
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.holding-item {
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.holding-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.holding-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.holding-symbol {
-  font-size: var(--font-size-sm);
-  font-weight: 400;
-  color: var(--color-text-primary);
-  letter-spacing: 0.02em;
-}
-
-.holding-value {
-  font-size: var(--font-size-sm);
-  font-weight: 300;
-  color: var(--color-text-primary);
-}
-
-.holding-details {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.holding-quantity {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  font-weight: 300;
-}
-
-.holding-return {
-  font-size: var(--font-size-xs);
-  font-weight: 400;
-}
-
-.holding-return.positive {
-  color: var(--color-positive);
-}
-
-.holding-return.negative {
-  color: var(--color-negative);
-}
-
-.progress-bar {
-  height: 2px;
-  background: var(--color-border);
-  border-radius: 1px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: 1px;
-  transition: width 0.3s ease;
-}
-
-.allocation-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-}
-
-.allocation-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-}
-
-.allocation-label {
-  flex: 1;
-  color: var(--color-text-primary);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-}
-
-.allocation-percent {
-  color: var(--color-text-muted);
-  font-weight: 300;
-}
-
-.activity-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-card-bg);
-  transition: all 0.2s;
-}
-
-.activity-item:hover {
-  border-color: var(--color-border-hover);
-  transform: translateX(2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.activity-type {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.activity-type.buy,
-.stat-change {
-  background: rgba(16, 163, 74, 0.1);
-  color: var(--color-positive);
-}
-
-.activity-text {
-  flex: 1;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-primary);
-  font-weight: 300;
-}
-
-.activity-date {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-light);
-  font-weight: 300;
-}
-
 /* --- Responsive Adjustments --- */
 
 /* Tablets (<= 1024px) */
 @media (max-width: 1024px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-md);
-  }
-
   .main-content {
     grid-template-columns: 1fr;
   }
@@ -760,11 +429,6 @@ export default {
     flex-wrap: wrap;
     gap: var(--spacing-md);
   }
-
-  .sidebar-section {
-    flex: 1 1 calc(50% - var(--spacing-md));
-    min-width: 280px;
-  }
 }
 
 /* Mobile (<= 768px) */
@@ -778,10 +442,6 @@ export default {
   .header-actions {
     width: 100%;
     justify-content: space-between;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
   }
 
   .main-content {
@@ -799,21 +459,8 @@ export default {
     padding-right: 0;
   }
 
-  .sidebar-section {
+  .sidebar > * {
     width: 100%;
-  }
-
-  .stat-card {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .stat-value {
-    font-size: 1.2rem;
-  }
-
-  .stat-icon {
-    display: none; /* hides icons to preserve space */
   }
 }
 
@@ -828,16 +475,5 @@ export default {
     font-size: 0.75rem;
   }
 
-  .sidebar-section h3 {
-    font-size: 10px;
-  }
-
-  .stat-card {
-    padding: var(--spacing-md);
-  }
-
-  .chart-placeholder {
-    background-size: 12px 12px;
-  }
 }
 </style>
