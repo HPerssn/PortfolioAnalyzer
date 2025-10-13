@@ -7,6 +7,8 @@ import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { formatCurrency, formatPercentage } from '@/utils/formatters'
+import { ASSET_COLORS, DEFAULT_COLOR } from '@/constants/colors'
 
 const portfolioStore = usePortfolioStore()
 const portfolio = ref<PortfolioSummary | null>(null)
@@ -93,17 +95,6 @@ const handleNewPortfolio = () => {
 
 const toggleForm = () => {
   showForm.value = !showForm.value
-}
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('sv-SE', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(value)
-}
-
-const formatPercentage = (value: number) => {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
 const returnClass = computed(() => {
@@ -302,9 +293,8 @@ onMounted(() => {
 export default {
   methods: {
     getAssetColor(symbol: string): string {
-      const colors = ['#404040', '#525252', '#737373', '#a3a3a3', '#d4d4d4', '#f97316']
       const hash = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-      return colors[hash % colors.length] || '#737373'
+      return ASSET_COLORS[hash % ASSET_COLORS.length] || DEFAULT_COLOR
     },
   },
 }
@@ -557,24 +547,6 @@ export default {
   background: var(--color-primary);
   color: white;
   border-color: var(--color-primary);
-}
-
-.chart-placeholder {
-  flex: 1;
-  position: relative;
-  background: #fafafa;
-  background-image: radial-gradient(circle, #c4c4c4 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-.chart-grid {
-  width: 100%;
-  height: 100%;
-  background-image:
-    linear-gradient(to right, var(--color-border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.3;
 }
 
 .sidebar {

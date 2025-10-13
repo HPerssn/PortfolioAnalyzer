@@ -152,11 +152,12 @@ const calculatePortfolio = async () => {
       purchaseDate: purchaseDate.value,
     })
     emit('calculated', result, holdingsToSubmit, purchaseDate.value)
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Extract error message from API response
+    const error = err as { response?: { data?: { error?: string; details?: string[] } }; message?: string }
     const errorMessage =
-      err?.response?.data?.error || err.message || 'Failed to calculate portfolio'
-    const errorDetails = err?.response?.data?.details
+      error?.response?.data?.error || error.message || 'Failed to calculate portfolio'
+    const errorDetails = error?.response?.data?.details
 
     if (errorDetails && Array.isArray(errorDetails)) {
       emit('error', `${errorMessage}: ${errorDetails.join('; ')}`)
@@ -230,8 +231,9 @@ const savePortfolio = async () => {
 
     // Automatically calculate portfolio after saving
     await calculatePortfolio()
-  } catch (err: any) {
-    emit('error', err.message || 'Failed to save portfolio')
+  } catch (err: unknown) {
+    const error = err as { message?: string }
+    emit('error', error.message || 'Failed to save portfolio')
   } finally {
     saving.value = false
   }

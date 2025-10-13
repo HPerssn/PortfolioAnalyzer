@@ -7,26 +7,24 @@ import {
   LinearScale,
   PointElement,
   LineElement,
-  Title,
   Tooltip,
-  Legend,
   Filler,
   type ChartOptions,
   type ChartData,
 } from 'chart.js'
 import type { PortfolioHistoryPoint } from '@/types/portfolio'
+import { formatChartDate } from '@/utils/formatters'
+import {
+  PLACEHOLDER_START_VALUE,
+  PLACEHOLDER_DAYS_BACK,
+  PLACEHOLDER_INTERVAL_DAYS,
+  PLACEHOLDER_VOLATILITY,
+  PLACEHOLDER_BIAS,
+  PLACEHOLDER_MIN_MULTIPLIER,
+} from '@/constants/chart'
 
 // Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
 // Accept history data as a prop
 const props = defineProps<{
@@ -38,19 +36,18 @@ const generatePlaceholderData = () => {
   const data = []
   const labels = []
   const today = new Date()
-  const startValue = 50000
-  let currentValue = startValue
+  let currentValue = PLACEHOLDER_START_VALUE
 
-  for (let i = 365; i >= 0; i -= 7) {
+  for (let i = PLACEHOLDER_DAYS_BACK; i >= 0; i -= PLACEHOLDER_INTERVAL_DAYS) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
+    labels.push(formatChartDate(date.toISOString()))
 
-    const month = date.toLocaleDateString('en-US', { month: 'short' })
-    const day = date.getDate()
-    labels.push(`${month} ${day}`)
-
-    const randomChange = (Math.random() - 0.45) * 2000
-    currentValue = Math.max(startValue * 0.8, currentValue + randomChange)
+    const randomChange = (Math.random() - PLACEHOLDER_BIAS) * PLACEHOLDER_VOLATILITY
+    currentValue = Math.max(
+      PLACEHOLDER_START_VALUE * PLACEHOLDER_MIN_MULTIPLIER,
+      currentValue + randomChange,
+    )
     data.push(Math.round(currentValue))
   }
 
@@ -61,12 +58,7 @@ const generatePlaceholderData = () => {
 const chartDataPoints = computed(() => {
   if (props.history && props.history.length > 0) {
     // Use real data
-    const labels = props.history.map((point) => {
-      const date = new Date(point.date)
-      const month = date.toLocaleDateString('en-US', { month: 'short' })
-      const day = date.getDate()
-      return `${month} ${day}`
-    })
+    const labels = props.history.map((point) => formatChartDate(point.date))
     const data = props.history.map((point) => point.value)
     return { labels, data }
   } else {
