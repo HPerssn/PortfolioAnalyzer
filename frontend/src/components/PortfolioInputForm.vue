@@ -12,7 +12,11 @@ import {
 import { usePortfolioStore } from '@/stores/portfolioStore'
 
 const emit = defineEmits<{
-  calculated: [summary: PortfolioSummary]
+  calculated: [
+    summary: PortfolioSummary,
+    holdings: Array<{ symbol: string; quantity: number }>,
+    purchaseDate: string,
+  ]
   error: [message: string]
   saved: []
 }>()
@@ -139,14 +143,15 @@ const calculatePortfolio = async () => {
 
   try {
     loading.value = true
+    const holdingsToSubmit = validHoldings.map((h) => ({
+      symbol: h.symbol.toUpperCase(),
+      quantity: h.quantity,
+    }))
     const result = await portfolioService.calculatePortfolio({
-      holdings: validHoldings.map((h) => ({
-        symbol: h.symbol.toUpperCase(),
-        quantity: h.quantity,
-      })),
+      holdings: holdingsToSubmit,
       purchaseDate: purchaseDate.value,
     })
-    emit('calculated', result)
+    emit('calculated', result, holdingsToSubmit, purchaseDate.value)
   } catch (err: any) {
     // Extract error message from API response
     const errorMessage =

@@ -1,5 +1,10 @@
 import apiClient from './client'
-import type { PortfolioSummary, Asset, StockPrice } from '@/types/portfolio'
+import type {
+  PortfolioSummary,
+  Asset,
+  StockPrice,
+  PortfolioHistoryResponse,
+} from '@/types/portfolio'
 
 export interface HoldingInput {
   symbol: string
@@ -45,10 +50,18 @@ export const portfolioService = {
   },
 
   /**
+   * Get portfolio value history over time
+   */
+  async getPortfolioHistory(request: CalculatePortfolioRequest): Promise<PortfolioHistoryResponse> {
+    const response = await apiClient.post<PortfolioHistoryResponse>('/portfolio/history', request)
+    return response.data
+  },
+
+  /**
    * Health check endpoint
    */
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     const response = await apiClient.get('/portfolio/health')
     return response.data
-  }
+  },
 }

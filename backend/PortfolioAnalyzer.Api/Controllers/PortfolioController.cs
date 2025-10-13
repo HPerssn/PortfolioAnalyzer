@@ -248,6 +248,96 @@ namespace PortfolioAnalyzer.Api.Controllers
         }
 
         /// <summary>
+        /// Get portfolio value history over time
+        /// </summary>
+        [HttpPost("history")]
+        public async Task<IActionResult> GetPortfolioHistory([FromBody] CalculatePortfolioRequest request)
+        {
+            try
+            {
+                if (request?.Holdings == null || !request.Holdings.Any())
+                {
+                    return BadRequest(new { error = "Holdings are required" });
+                }
+
+                // Validate purchase date
+                if (!TickerValidator.IsValidPurchaseDate(request.PurchaseDate))
+                {
+                    return BadRequest(new { error = TickerValidator.GetPurchaseDateErrorMessage(request.PurchaseDate) });
+                }
+
+                // Validate each holding
+                foreach (var holding in request.Holdings)
+                {
+                    if (!TickerValidator.IsValidTickerSymbol(holding.Symbol))
+                    {
+                        return BadRequest(new { error = TickerValidator.GetTickerErrorMessage(holding.Symbol) });
+                    }
+                    if (!TickerValidator.IsValidQuantity(holding.Quantity))
+                    {
+                        return BadRequest(new { error = TickerValidator.GetQuantityErrorMessage(holding.Quantity) });
+                    }
+                }
+
+                // Fetch historical prices for all holdings
+                var historicalData = new Dictionary<string, List<Core.Data.PriceRecord>>();
+                foreach (var holding in request.Holdings)
+                {
+                    var symbolUpper = holding.Symbol.ToUpper();
+                    var prices = await _dataService.GetStockPricesAsync(symbolUpper, request.PurchaseDate);
+                    historicalData[symbolUpper] = prices;
+                }
+
+                // Find common dates across all holdings
+                var allDates = historicalData.Values
+                    .SelectMany(prices => prices.Select(p => p.Date))
+                    .Distinct()
+                    .OrderBy(d => d)
+                    .ToList();
+
+                // Calculate portfolio value for each date
+                var portfolioHistory = new List<object>();
+                foreach (var date in allDates)
+                {
+                    decimal totalValue = 0;
+                    bool hasAllPrices = true;
+
+                    foreach (var holding in request.Holdings)
+                    {
+                        var symbolUpper = holding.Symbol.ToUpper();
+                        var priceOnDate = historicalData[symbolUpper]
+                            .FirstOrDefault(p => p.Date == date);
+
+                        if (priceOnDate != null)
+                        {
+                            totalValue += priceOnDate.Close * holding.Quantity;
+                        }
+                        else
+                        {
+                            hasAllPrices = false;
+                            break;
+                        }
+                    }
+
+                    if (hasAllPrices)
+                    {
+                        portfolioHistory.Add(new
+                        {
+                            Date = date,
+                            Value = Math.Round(totalValue, 2)
+                        });
+                    }
+                }
+
+                return Ok(new { history = portfolioHistory });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Failed to fetch portfolio history: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
         /// Health check endpoint
         /// </summary>
         [HttpGet("health")]

@@ -44,3 +44,12 @@ export interface SavedHolding {
   quantity: number
   purchaseDate?: string // Optional - null means use portfolio's default date
 }
+
+export interface PortfolioHistoryPoint {
+  date: string
+  value: number
+}
+
+export interface PortfolioHistoryResponse {
+  history: PortfolioHistoryPoint[]
+}

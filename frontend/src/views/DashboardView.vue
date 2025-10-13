@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
-import type { PortfolioSummary } from '@/types/portfolio'
+import type { PortfolioSummary, PortfolioHistoryPoint } from '@/types/portfolio'
 import PixelIcon from '@/components/PixelIcon.vue'
 import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 import PortfolioSelector from '@/components/PortfolioSelector.vue'
+import PortfolioChart from '@/components/PortfolioChart.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 
 const portfolioStore = usePortfolioStore()
 const portfolio = ref<PortfolioSummary | null>(null)
+const portfolioHistory = ref<PortfolioHistoryPoint[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const showForm = ref(true)
@@ -27,11 +29,28 @@ const fetchPortfolio = async () => {
   }
 }
 
-const handleCalculated = (summary: PortfolioSummary) => {
+const handleCalculated = async (
+  summary: PortfolioSummary,
+  holdings: Array<{ symbol: string; quantity: number }>,
+  purchaseDate: string,
+) => {
   portfolio.value = summary
   loading.value = false
   error.value = null
   showForm.value = false
+
+  // Fetch portfolio history for the chart
+  try {
+    const historyResponse = await portfolioService.getPortfolioHistory({
+      holdings,
+      purchaseDate,
+    })
+    portfolioHistory.value = historyResponse.history
+  } catch (err) {
+    console.error('Failed to fetch portfolio history:', err)
+    // Don't show error to user, just use placeholder data in chart
+    portfolioHistory.value = []
+  }
 }
 
 const handleError = (message: string) => {
@@ -205,9 +224,7 @@ onMounted(() => {
               <button>ALL</button>
             </div>
           </div>
-          <div class="chart-placeholder">
-            <div class="chart-grid"></div>
-          </div>
+          <PortfolioChart :history="portfolioHistory" />
         </div>
 
         <!-- Sidebar (Right, 1/3) -->
