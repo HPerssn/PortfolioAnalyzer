@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import StatCard from '@/components/StatCard.vue'
+import HoldingsCard from '@/components/HoldingsCard.vue'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
-import type { BenchmarkComparison } from '@/types/portfolio'
+import type { BenchmarkComparison, Asset } from '@/types/portfolio'
 import { computed } from 'vue'
 
 interface Props {
   totalValue: number
   totalReturn: number
   totalReturnPercentage: number
-  assetCount: number
   benchmarkComparison: BenchmarkComparison | null
+  assets: Asset[]
 }
 
 const props = defineProps<Props>()
@@ -21,13 +22,14 @@ const benchmarkLabel = computed(() => {
 
 const benchmarkValue = computed(() => {
   if (!props.benchmarkComparison) return '—'
-  const diff = props.benchmarkComparison.difference
-  return diff >= 0 ? `${formatPercentage(diff)}` : formatPercentage(diff)
+  return formatPercentage(props.benchmarkComparison.difference)
 })
 
 const benchmarkChange = computed(() => {
   if (!props.benchmarkComparison) return ''
-  return `${Math.floor(props.benchmarkComparison.daysHeld / 365)}y ${props.benchmarkComparison.daysHeld % 365}d`
+  const years = Math.floor(props.benchmarkComparison.daysHeld / 365)
+  const days = props.benchmarkComparison.daysHeld % 365
+  return `${years}y ${days}d`
 })
 
 const benchmarkVariant = computed(() => {
@@ -56,7 +58,8 @@ const benchmarkVariant = computed(() => {
       :variant="totalReturn >= 0 ? 'positive' : 'negative'"
     />
 
-    <StatCard icon="pie-chart" label="Holdings" :value="String(assetCount)" />
+    <!-- Replace old holdings stat card -->
+    <HoldingsCard :assets="assets" :totalValue="totalValue" />
   </div>
 </template>
 
@@ -69,15 +72,12 @@ const benchmarkVariant = computed(() => {
   background: var(--color-bg-base);
 }
 
-/* Tablets (<= 1024px) */
 @media (max-width: 1024px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-md);
   }
 }
 
-/* Mobile (<= 768px) */
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: 1fr;

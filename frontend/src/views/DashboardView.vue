@@ -6,7 +6,7 @@ import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
-import HoldingsList from '@/components/HoldingsList.vue'
+import HoldingsList from '@/components/HoldingsCard.vue'
 import AllocationList from '@/components/AllocationList.vue'
 import ActivityList from '@/components/ActivityList.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -177,7 +177,7 @@ onMounted(() => {
         :total-value="portfolio.totalValue"
         :total-return="portfolio.totalReturn"
         :total-return-percentage="portfolio.totalReturnPercentage"
-        :asset-count="portfolio.assetCount"
+        :assets="portfolio.assets"
         :benchmark-comparison="benchmarkComparison"
       />
 
@@ -201,7 +201,6 @@ onMounted(() => {
 
         <!-- Sidebar (Right, 1/3) -->
         <div class="sidebar">
-          <HoldingsList :assets="portfolio.assets" />
           <AllocationList :assets="portfolio.assets" :total-value="portfolio.totalValue" />
           <ActivityList :activities="activities" />
         </div>
