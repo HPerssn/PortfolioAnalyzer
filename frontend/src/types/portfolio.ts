@@ -53,3 +53,15 @@ export interface PortfolioHistoryPoint {
 export interface PortfolioHistoryResponse {
   history: PortfolioHistoryPoint[]
 }
+
+export interface BenchmarkComparison {
+  portfolioReturn: number
+  benchmarkReturn: number
+  difference: number
+  outperforming: boolean
+  daysHeld: number
+  benchmarkName: string
+  benchmarkSymbol: string
+  purchaseDate: string
+  lastUpdated: string
+}

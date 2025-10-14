@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using PortfolioAnalyzer.Core.Services;
 using PortfolioAnalyzer.Core.Models;
 using PortfolioAnalyzer.Core.Validators;
@@ -13,12 +14,14 @@ namespace PortfolioAnalyzer.Api.Controllers
         private readonly RealDataService _dataService;
         private readonly PortfolioBuilderService _portfolioBuilder;
         private readonly ConfigurationService _configService;
+        private readonly IMemoryCache _cache;
 
-        public PortfolioController()
+        public PortfolioController(IMemoryCache cache)
         {
             _dataService = new RealDataService();
             _portfolioBuilder = new PortfolioBuilderService();
             _configService = new ConfigurationService();
+            _cache = cache;
         }
 
         /// <summary>
@@ -334,6 +337,93 @@ namespace PortfolioAnalyzer.Api.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = $"Failed to fetch portfolio history: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Compare portfolio performance against S&P 500 benchmark
+        /// </summary>
+        [HttpPost("benchmark")]
+        public async Task<IActionResult> GetBenchmarkComparison([FromBody] CalculatePortfolioRequest request)
+        {
+            try
+            {
+                if (request?.Holdings == null || !request.Holdings.Any())
+                {
+                    return BadRequest(new { error = "Holdings are required" });
+                }
+
+                // Validate purchase date
+                if (!TickerValidator.IsValidPurchaseDate(request.PurchaseDate))
+                {
+                    return BadRequest(new { error = TickerValidator.GetPurchaseDateErrorMessage(request.PurchaseDate) });
+                }
+
+                // Validate each holding
+                foreach (var holding in request.Holdings)
+                {
+                    if (!TickerValidator.IsValidTickerSymbol(holding.Symbol))
+                    {
+                        return BadRequest(new { error = TickerValidator.GetTickerErrorMessage(holding.Symbol) });
+                    }
+                    if (!TickerValidator.IsValidQuantity(holding.Quantity))
+                    {
+                        return BadRequest(new { error = TickerValidator.GetQuantityErrorMessage(holding.Quantity) });
+                    }
+                }
+
+                // Calculate portfolio performance
+                var holdings = request.Holdings.ToDictionary(h => h.Symbol.ToUpper(), h => h.Quantity);
+                var portfolio = await _portfolioBuilder.BuildFromSymbolsAsync(holdings, request.PurchaseDate);
+                var portfolioReturnPercentage = portfolio.GetTotalReturnPercentage();
+
+                // Fetch S&P 500 benchmark data with caching
+                var cacheKey = $"benchmark_sp500_{request.PurchaseDate:yyyyMMdd}";
+                decimal benchmarkReturnPercentage;
+
+                if (!_cache.TryGetValue(cacheKey, out benchmarkReturnPercentage))
+                {
+                    // Fetch S&P 500 (^GSPC) historical data
+                    var benchmarkPrices = await _dataService.GetStockPricesAsync("^GSPC", request.PurchaseDate);
+
+                    if (benchmarkPrices == null || benchmarkPrices.Count < 2)
+                    {
+                        return StatusCode(500, new { error = "Unable to fetch S&P 500 benchmark data" });
+                    }
+
+                    // Calculate benchmark return
+                    var startPrice = benchmarkPrices.First().Close;
+                    var endPrice = benchmarkPrices.Last().Close;
+                    benchmarkReturnPercentage = ((endPrice - startPrice) / startPrice) * 100;
+
+                    // Cache for 24 hours
+                    var cacheOptions = new MemoryCacheEntryOptions()
+                        .SetAbsoluteExpiration(TimeSpan.FromHours(24));
+                    _cache.Set(cacheKey, benchmarkReturnPercentage, cacheOptions);
+                }
+
+                // Calculate difference
+                var difference = portfolioReturnPercentage - benchmarkReturnPercentage;
+                var daysHeld = (DateTime.Now - request.PurchaseDate).Days;
+
+                var response = new
+                {
+                    PortfolioReturn = Math.Round(portfolioReturnPercentage, 2),
+                    BenchmarkReturn = Math.Round(benchmarkReturnPercentage, 2),
+                    Difference = Math.Round(difference, 2),
+                    Outperforming = difference > 0,
+                    DaysHeld = daysHeld,
+                    BenchmarkName = "S&P 500",
+                    BenchmarkSymbol = "^GSPC",
+                    PurchaseDate = request.PurchaseDate,
+                    LastUpdated = DateTime.UtcNow
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Failed to calculate benchmark comparison: {ex.Message}" });
             }
         }
 

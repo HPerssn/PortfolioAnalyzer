@@ -4,6 +4,7 @@ import type {
   Asset,
   StockPrice,
   PortfolioHistoryResponse,
+  BenchmarkComparison,
 } from '@/types/portfolio'
 
 export interface HoldingInput {
@@ -54,6 +55,14 @@ export const portfolioService = {
    */
   async getPortfolioHistory(request: CalculatePortfolioRequest): Promise<PortfolioHistoryResponse> {
     const response = await apiClient.post<PortfolioHistoryResponse>('/portfolio/history', request)
+    return response.data
+  },
+
+  /**
+   * Get benchmark comparison (S&P 500) for portfolio
+   */
+  async getBenchmarkComparison(request: CalculatePortfolioRequest): Promise<BenchmarkComparison> {
+    const response = await apiClient.post<BenchmarkComparison>('/portfolio/benchmark', request)
     return response.data
   },
 

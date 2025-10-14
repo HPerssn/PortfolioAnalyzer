@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
-import type { PortfolioSummary, PortfolioHistoryPoint } from '@/types/portfolio'
+import type { PortfolioSummary, PortfolioHistoryPoint, BenchmarkComparison } from '@/types/portfolio'
 import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
@@ -14,6 +14,7 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 const portfolioStore = usePortfolioStore()
 const portfolio = ref<PortfolioSummary | null>(null)
 const portfolioHistory = ref<PortfolioHistoryPoint[]>([])
+const benchmarkComparison = ref<BenchmarkComparison | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const showForm = ref(true)
@@ -53,6 +54,19 @@ const handleCalculated = async (
     console.error('Failed to fetch portfolio history:', err)
     // Don't show error to user, just use placeholder data in chart
     portfolioHistory.value = []
+  }
+
+  // Fetch benchmark comparison
+  try {
+    const benchmarkResponse = await portfolioService.getBenchmarkComparison({
+      holdings,
+      purchaseDate,
+    })
+    benchmarkComparison.value = benchmarkResponse
+  } catch (err) {
+    console.error('Failed to fetch benchmark comparison:', err)
+    // Don't show error to user, benchmark card will show placeholder
+    benchmarkComparison.value = null
   }
 }
 
@@ -164,6 +178,7 @@ onMounted(() => {
         :total-return="portfolio.totalReturn"
         :total-return-percentage="portfolio.totalReturnPercentage"
         :asset-count="portfolio.assetCount"
+        :benchmark-comparison="benchmarkComparison"
       />
 
       <!-- Main Content Area -->

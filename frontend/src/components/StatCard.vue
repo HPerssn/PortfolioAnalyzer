@@ -71,13 +71,18 @@ const props = withDefaults(defineProps<Props>(), {
 
 .stat-change {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
   font-weight: 400;
   display: inline-block;
   padding: 2px 8px;
   border-radius: 4px;
   background: rgba(16, 163, 74, 0.1);
   color: var(--color-positive);
+}
+
+/* Negative variant styling */
+.stat-card.negative .stat-change {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--color-negative);
 }
 
 /* Mobile optimizations */
