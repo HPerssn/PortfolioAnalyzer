@@ -23,7 +23,25 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   })
   const simulationData = ref<PortfolioHistoryPoint[]>([])
   const historicalData = ref<PortfolioHistoryPoint[]>([])
+
+  // Multi-path simulation data
+  const simulationPaths = ref<PortfolioHistoryPoint[][]>([])
+  const simulationPercentiles = ref<{
+    p25: PortfolioHistoryPoint[]
+    p50: PortfolioHistoryPoint[]
+    p75: PortfolioHistoryPoint[]
+  }>({
+    p25: [],
+    p50: [],
+    p75: [],
+  })
+
+  // Display mode for chart
+  const showConfidenceBand = ref(true)
+
   let animationInterval: number | null = null
+
+  const NUM_SIMULATIONS = 30 // Reduced from 50 for better performance during animation
 
   // Computed
   const selectedPortfolio = computed(() => {
@@ -254,24 +272,83 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     const monthsToSimulate = years * 12
     const simulatedPoints: PortfolioHistoryPoint[] = []
 
+    // Add starting point (last historical point) to ensure continuity
+    simulatedPoints.push({
+      date: startDate.toISOString(),
+      value: Math.round(startingValue),
+    })
+
     let currentValue = startingValue
-    const currentDate = new Date(startDate)
 
     for (let i = 0; i < monthsToSimulate; i++) {
       // Generate random monthly return using normal distribution
       const monthlyReturn = generateNormalRandom(avgReturn, volatility)
       currentValue = currentValue * (1 + monthlyReturn)
 
-      // Advance date by one month
-      currentDate.setMonth(currentDate.getMonth() + 1)
+      // Create a new Date object for each month (avoid mutation)
+      const nextDate = new Date(startDate)
+      nextDate.setMonth(startDate.getMonth() + i + 1)
 
       simulatedPoints.push({
-        date: currentDate.toISOString(),
+        date: nextDate.toISOString(),
         value: Math.round(currentValue),
       })
     }
 
     return simulatedPoints
+  }
+
+  /**
+   * Calculate percentile from array of values
+   */
+  function calculatePercentile(values: number[], percentile: number): number {
+    if (values.length === 0) return 0
+
+    const sorted = [...values].sort((a, b) => a - b)
+    const index = (percentile / 100) * (sorted.length - 1)
+    const lower = Math.floor(index)
+    const upper = Math.ceil(index)
+    const weight = index % 1
+
+    if (lower === upper) {
+      return sorted[lower] ?? 0
+    }
+
+    const lowerVal = sorted[lower] ?? 0
+    const upperVal = sorted[upper] ?? 0
+    return lowerVal * (1 - weight) + upperVal * weight
+  }
+
+  /**
+   * Calculate percentile bands from multiple simulation paths
+   * Simplified to only calculate 25th, 50th, 75th percentiles for better performance
+   */
+  function calculatePercentileBands(
+    paths: PortfolioHistoryPoint[][],
+  ): {
+    p25: PortfolioHistoryPoint[]
+    p50: PortfolioHistoryPoint[]
+    p75: PortfolioHistoryPoint[]
+  } {
+    if (paths.length === 0) {
+      return { p25: [], p50: [], p75: [] }
+    }
+
+    const numPoints = paths[0].length
+    const p25: PortfolioHistoryPoint[] = []
+    const p50: PortfolioHistoryPoint[] = []
+    const p75: PortfolioHistoryPoint[] = []
+
+    for (let i = 0; i < numPoints; i++) {
+      const values = paths.map((path) => path[i]?.value ?? 0)
+      const date = paths[0]?.[i]?.date ?? new Date().toISOString()
+
+      p25.push({ date, value: Math.round(calculatePercentile(values, 25)) })
+      p50.push({ date, value: Math.round(calculatePercentile(values, 50)) })
+      p75.push({ date, value: Math.round(calculatePercentile(values, 75)) })
+    }
+
+    return { p25, p50, p75 }
   }
 
   /**
@@ -294,9 +371,29 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     const startingValue = lastHistoricalPoint.value
     const startDate = new Date(lastHistoricalPoint.date)
 
-    // Generate simulation data
-    const fullSimulation = generateSimulationData(startingValue, startDate, years)
-    simulationData.value = fullSimulation
+    // Generate multiple simulation paths
+    const paths: PortfolioHistoryPoint[][] = []
+    for (let i = 0; i < NUM_SIMULATIONS; i++) {
+      paths.push(generateSimulationData(startingValue, startDate, years))
+    }
+
+    // Store only 5 sample paths for visualization (reduce memory usage)
+    const sampleIndices = [
+      0,
+      Math.floor(NUM_SIMULATIONS * 0.25),
+      Math.floor(NUM_SIMULATIONS * 0.5),
+      Math.floor(NUM_SIMULATIONS * 0.75),
+      NUM_SIMULATIONS - 1,
+    ]
+    simulationPaths.value = sampleIndices
+      .map((i) => paths[i])
+      .filter((path): path is PortfolioHistoryPoint[] => path !== undefined)
+
+    // Calculate percentile bands
+    simulationPercentiles.value = calculatePercentileBands(paths)
+
+    // Use median (p50) as the main simulation data for backward compatibility
+    simulationData.value = simulationPercentiles.value.p50
 
     // Reset simulation state
     simulationState.value = {
@@ -313,28 +410,58 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   /**
-   * Start animation loop
+   * Start animation loop with optimized frame updates
+   * Updates at ~30 FPS instead of 60 FPS to reduce computational load
    */
   function startAnimation(speed: number) {
     // Clear any existing interval
     if (animationInterval) {
-      clearInterval(animationInterval)
+      window.cancelAnimationFrame(animationInterval)
     }
 
-    // Base interval: 100ms per month, adjusted by speed
-    const intervalMs = 100 / speed
+    const totalDuration = 10000 // Total animation duration in ms (10 seconds at 1x speed)
+    const adjustedDuration = totalDuration / speed
+    const startTime = Date.now()
+    const totalSteps = simulationData.value.length
+    const targetFPS = 30 // Reduce from 60 FPS to 30 FPS for better performance
+    const frameInterval = 1000 / targetFPS
+    let lastFrameTime = startTime
 
-    animationInterval = window.setInterval(() => {
-      if (simulationState.value.currentIndex < simulationData.value.length) {
-        simulationState.value.currentIndex++
-        simulationState.value.progress = Math.round(
-          (simulationState.value.currentIndex / simulationData.value.length) * 100,
-        )
-      } else {
-        // Simulation complete
-        pauseSimulation()
+    const animate = () => {
+      const now = Date.now()
+      const elapsed = now - startTime
+      const timeSinceLastFrame = now - lastFrameTime
+
+      // Only update if enough time has passed (throttle to target FPS)
+      if (timeSinceLastFrame >= frameInterval) {
+        lastFrameTime = now
+
+        // Calculate progress as a ratio (0 to 1)
+        const progressRatio = Math.min(elapsed / adjustedDuration, 1)
+
+        // Calculate current index based on smooth interpolation
+        const targetIndex = Math.floor(progressRatio * totalSteps)
+        const newIndex = Math.min(targetIndex, totalSteps)
+
+        // Only update if index actually changed (avoid unnecessary reactivity triggers)
+        if (newIndex !== simulationState.value.currentIndex) {
+          simulationState.value.currentIndex = newIndex
+          simulationState.value.progress = Math.round((newIndex / totalSteps) * 100)
+        }
+
+        // Check if animation is complete
+        if (simulationState.value.currentIndex >= totalSteps) {
+          pauseSimulation()
+          return
+        }
       }
-    }, intervalMs)
+
+      if (simulationState.value.isPlaying && !simulationState.value.isPaused) {
+        animationInterval = window.requestAnimationFrame(animate)
+      }
+    }
+
+    animationInterval = window.requestAnimationFrame(animate)
   }
 
   /**
@@ -342,7 +469,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
    */
   function pauseSimulation() {
     if (animationInterval) {
-      clearInterval(animationInterval)
+      window.cancelAnimationFrame(animationInterval)
       animationInterval = null
     }
     simulationState.value.isPaused = true
@@ -363,7 +490,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
    */
   function resetSimulation() {
     if (animationInterval) {
-      clearInterval(animationInterval)
+      window.cancelAnimationFrame(animationInterval)
       animationInterval = null
     }
 
@@ -377,6 +504,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
 
     simulationData.value = []
+    simulationPaths.value = []
+    simulationPercentiles.value = {
+      p25: [],
+      p50: [],
+      p75: [],
+    }
   }
 
   /**
@@ -411,6 +544,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     return [...historicalData.value, ...visibleSimulation]
   })
 
+  /**
+   * Toggle confidence band display
+   */
+  function toggleConfidenceBand() {
+    showConfidenceBand.value = !showConfidenceBand.value
+  }
+
   return {
     // State
     savedPortfolios,
@@ -420,6 +560,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     simulationState,
     simulationData,
     historicalData,
+    simulationPaths,
+    simulationPercentiles,
+    showConfidenceBand,
 
     // Computed
     selectedPortfolio,
@@ -441,5 +584,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     resetSimulation,
     updateSimulationSpeed,
     setHistoricalData,
+    toggleConfidenceBand,
   }
 })

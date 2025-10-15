@@ -57,23 +57,63 @@ const generatePlaceholderData = () => {
   return { labels, data }
 }
 
+// Memoized historical data processing (computed once, doesn't change during simulation)
+const historicalDataMemo = computed(() => {
+  const historical = portfolioStore.historicalData
+  return {
+    values: historical.map((point) => point.value),
+    labels: historical.map((point) => formatChartDate(point.date)),
+    length: historical.length,
+  }
+})
+
 // Process real data or use placeholder
 const chartDataPoints = computed(() => {
   // Check if we have simulation data
   const hasSimulation = portfolioStore.simulationState.isPlaying || portfolioStore.simulationState.isPaused
 
-  if (hasSimulation && portfolioStore.combinedChartData.length > 0) {
-    // Use combined data (historical + simulation)
-    const historicalLength = portfolioStore.historicalData.length
-    const combinedData = portfolioStore.combinedChartData
+  if (hasSimulation && portfolioStore.simulationPercentiles.p50.length > 0) {
+    // Use percentile bands for simulation
+    const currentIndex = portfolioStore.simulationState.currentIndex
+    const historical = historicalDataMemo.value
 
-    const labels = combinedData.map((point) => formatChartDate(point.date))
-    const historicalValues = combinedData.slice(0, historicalLength).map((point) => point.value)
-    const simulationValues = new Array(historicalLength).fill(null).concat(
-      combinedData.slice(historicalLength).map((point) => point.value)
-    )
+    // Pre-calculate simulation slices (faster than multiple slice operations)
+    const p25 = portfolioStore.simulationPercentiles.p25
+    const p50 = portfolioStore.simulationPercentiles.p50
+    const p75 = portfolioStore.simulationPercentiles.p75
 
-    return { labels, historicalValues, simulationValues, hasSimulation: true }
+    // Build labels efficiently - reuse historical labels
+    const simulationLabels: string[] = []
+    for (let i = 1; i < currentIndex && i < p50.length; i++) {
+      const point = p50[i]
+      if (point) {
+        simulationLabels.push(formatChartDate(point.date))
+      }
+    }
+    const labels = [...historical.labels, ...simulationLabels]
+
+    // Build value arrays efficiently with pre-allocated nulls
+    const nullPadding = new Array(historical.length - 1).fill(null)
+
+    // Build simulation value arrays
+    const p25Values = [...nullPadding]
+    const p50Values = [...nullPadding]
+    const p75Values = [...nullPadding]
+
+    for (let i = 0; i < currentIndex && i < p50.length; i++) {
+      p25Values.push(p25[i]?.value ?? 0)
+      p50Values.push(p50[i]?.value ?? 0)
+      p75Values.push(p75[i]?.value ?? 0)
+    }
+
+    return {
+      labels,
+      historicalValues: historical.values,
+      p25Values,
+      p50Values,
+      p75Values,
+      hasSimulation: true,
+    }
   } else if (props.history && props.history.length > 0) {
     // Use real data
     const labels = props.history.map((point) => formatChartDate(point.date))
@@ -89,42 +129,82 @@ const chartDataPoints = computed(() => {
 // Chart data configuration
 const chartData = computed<ChartData<'line'>>(() => {
   const dataPoints = chartDataPoints.value
+  const showBand = portfolioStore.showConfidenceBand
 
   if (dataPoints.hasSimulation) {
-    // Show two datasets: historical (solid) and simulation (dashed)
+    const datasets: any[] = [
+      // Historical data (solid orange line)
+      {
+        label: 'Historical',
+        data: dataPoints.historicalValues,
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.02)',
+        borderWidth: 1.5,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: '#f97316',
+        pointHoverBorderColor: '#fff',
+        pointHoverBorderWidth: 2,
+        fill: true,
+        order: 1,
+      },
+    ]
+
+    // Add confidence band if enabled
+    if (showBand) {
+      // P75 (upper bound with subtle border)
+      datasets.push({
+        label: '75th Percentile',
+        data: dataPoints.p75Values,
+        borderColor: 'rgba(249, 115, 22, 0.2)',
+        backgroundColor: 'transparent',
+        borderWidth: 0.5,
+        borderDash: [2, 2],
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        fill: false,
+        order: 3,
+      })
+
+      // P25 (lower bound with fill to P75)
+      datasets.push({
+        label: '25th-75th Percentile Range',
+        data: dataPoints.p25Values,
+        borderColor: 'rgba(249, 115, 22, 0.2)',
+        backgroundColor: 'rgba(249, 115, 22, 0.08)',
+        borderWidth: 0.5,
+        borderDash: [2, 2],
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        fill: '-1', // Fill to previous dataset (P75)
+        order: 3,
+      })
+    }
+
+    // P50 Median (dashed orange line - always shown)
+    datasets.push({
+      label: 'Median Projection',
+      data: dataPoints.p50Values,
+      borderColor: '#f97316',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [5, 5],
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHoverBackgroundColor: '#f97316',
+      pointHoverBorderColor: '#fff',
+      pointHoverBorderWidth: 2,
+      fill: false,
+      order: 2,
+    })
+
     return {
       labels: dataPoints.labels,
-      datasets: [
-        {
-          label: 'Historical',
-          data: dataPoints.historicalValues,
-          borderColor: '#f97316', // Orange line
-          backgroundColor: 'rgba(249, 115, 22, 0.02)', // Very subtle orange fill
-          borderWidth: 1.5,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          pointHoverBackgroundColor: '#f97316',
-          pointHoverBorderColor: '#fff',
-          pointHoverBorderWidth: 2,
-          fill: true,
-        },
-        {
-          label: 'Simulation',
-          data: dataPoints.simulationValues,
-          borderColor: '#f97316', // Same orange
-          backgroundColor: 'transparent',
-          borderWidth: 1.5,
-          borderDash: [5, 5], // Dashed line
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          pointHoverBackgroundColor: '#f97316',
-          pointHoverBorderColor: '#fff',
-          pointHoverBorderWidth: 2,
-          fill: false,
-        },
-      ],
+      datasets,
     }
   } else {
     // Single dataset for regular view
@@ -169,7 +249,7 @@ const chartOptions = computed(() => ({
       bodyColor: '#737373',
       borderColor: '#e5e5e5',
       borderWidth: 1,
-      padding: 8,
+      padding: 10,
       displayColors: false,
       titleFont: {
         size: 11,
@@ -177,7 +257,7 @@ const chartOptions = computed(() => ({
         family: "'Inter', sans-serif",
       },
       bodyFont: {
-        size: 13,
+        size: 12,
         weight: 'normal' as const,
         family: "'Inter', sans-serif",
       },
@@ -185,6 +265,36 @@ const chartOptions = computed(() => ({
         label: (context: any) => {
           const value = context.parsed?.y
           if (value == null) return ''
+
+          const datasetLabel = context.dataset.label
+          const isSimulation = datasetLabel && (datasetLabel.includes('Projection') || datasetLabel.includes('Percentile'))
+
+          if (isSimulation) {
+            const dataIndex = context.dataIndex
+            const historicalLength = portfolioStore.historicalData.length
+            const simulationIndex = dataIndex - historicalLength + 1
+
+            if (simulationIndex >= 0 && simulationIndex < portfolioStore.simulationPercentiles.p50.length) {
+              const p25 = portfolioStore.simulationPercentiles.p25[simulationIndex]?.value ?? 0
+              const p50 = portfolioStore.simulationPercentiles.p50[simulationIndex]?.value ?? 0
+              const p75 = portfolioStore.simulationPercentiles.p75[simulationIndex]?.value ?? 0
+
+              // Calculate mean from percentiles (approximation)
+              const mean = Math.round((p25 + p50 + p75) / 3)
+
+              // Only show for the median projection line to avoid duplicates
+              if (datasetLabel === 'Median Projection') {
+                return [
+                  `High: $${p75.toLocaleString('en-US')}`,
+                  `Mean: $${mean.toLocaleString('en-US')}`,
+                  `Low: $${p25.toLocaleString('en-US')}`
+                ]
+              }
+              // For other simulation datasets, return empty to hide them
+              return ''
+            }
+          }
+
           return `$${value.toLocaleString('en-US')}`
         },
       },
