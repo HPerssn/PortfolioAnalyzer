@@ -219,14 +219,24 @@ export const usePortfolioStore = defineStore('portfolio', () => {
    */
   function calculateAverageReturn(data: PortfolioHistoryPoint[]): number {
     if (data.length < 2) return 0
-
+  
     let totalReturn = 0
+    let validPeriods = 0 // Keep track of valid calculations
+  
     for (let i = 1; i < data.length; i++) {
-      const monthReturn = (data[i].value - data[i - 1].value) / data[i - 1].value
-      totalReturn += monthReturn
+      const currentPoint = data[i]
+      const previousPoint = data[i - 1]
+  
+      // Check if both points exist and prevent division by zero
+      if (currentPoint && previousPoint && previousPoint.value !== 0) {
+        const monthReturn = (currentPoint.value - previousPoint.value) / previousPoint.value
+        totalReturn += monthReturn
+        validPeriods++
+      }
     }
-
-    return totalReturn / (data.length - 1)
+  
+    // Return the average, or 0 if no valid periods were found
+    return validPeriods > 0 ? totalReturn / validPeriods : 0
   }
 
   /**
@@ -234,17 +244,26 @@ export const usePortfolioStore = defineStore('portfolio', () => {
    */
   function calculateVolatility(data: PortfolioHistoryPoint[]): number {
     if (data.length < 2) return 0.02 // Default 2% volatility if no data
-
+  
     const returns: number[] = []
     for (let i = 1; i < data.length; i++) {
-      const monthReturn = (data[i].value - data[i - 1].value) / data[i - 1].value
-      returns.push(monthReturn)
+      const currentPoint = data[i]
+      const previousPoint = data[i - 1]
+      
+      // Check if both points exist and prevent division by zero
+      if (currentPoint && previousPoint && previousPoint.value !== 0) {
+          const monthReturn = (currentPoint.value - previousPoint.value) / previousPoint.value
+          returns.push(monthReturn)
+      }
     }
-
+  
+    // If we don't have enough valid returns, use the default volatility
+    if (returns.length < 2) return 0.02
+  
     const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length
     const variance =
       returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length
-
+  
     return Math.sqrt(variance)
   }
 
@@ -330,18 +349,21 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     p50: PortfolioHistoryPoint[]
     p75: PortfolioHistoryPoint[]
   } {
-    if (paths.length === 0) {
+    const firstPath = paths[0]
+    // Add a clearer check that satisfies TypeScript
+    if (!firstPath) {
       return { p25: [], p50: [], p75: [] }
     }
 
-    const numPoints = paths[0].length
+    const numPoints = firstPath.length
     const p25: PortfolioHistoryPoint[] = []
     const p50: PortfolioHistoryPoint[] = []
     const p75: PortfolioHistoryPoint[] = []
 
     for (let i = 0; i < numPoints; i++) {
       const values = paths.map((path) => path[i]?.value ?? 0)
-      const date = paths[0]?.[i]?.date ?? new Date().toISOString()
+      // Use the 'firstPath' variable which TypeScript now knows is safe
+      const date = firstPath[i]?.date ?? new Date().toISOString()
 
       p25.push({ date, value: Math.round(calculatePercentile(values, 25)) })
       p50.push({ date, value: Math.round(calculatePercentile(values, 50)) })
@@ -366,8 +388,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       return
     }
 
+
     // Get the last point from historical data
     const lastHistoricalPoint = historicalData.value[historicalData.value.length - 1]
+        
+    // Add a guard clause to ensure the point exists before using it
+    if (!lastHistoricalPoint) {
+      console.error('Could not get last historical point to start simulation.')
+      return
+    }
+
     const startingValue = lastHistoricalPoint.value
     const startDate = new Date(lastHistoricalPoint.date)
 
