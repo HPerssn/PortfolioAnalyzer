@@ -14,6 +14,7 @@ import {
 } from 'chart.js'
 import type { PortfolioHistoryPoint } from '@/types/portfolio'
 import { formatChartDate } from '@/utils/formatters'
+import { usePortfolioStore } from '@/stores/portfolioStore'
 import {
   PLACEHOLDER_START_VALUE,
   PLACEHOLDER_DAYS_BACK,
@@ -30,6 +31,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 const props = defineProps<{
   history?: PortfolioHistoryPoint[]
 }>()
+
+const portfolioStore = usePortfolioStore()
 
 // Generate placeholder data if no real data is provided
 const generatePlaceholderData = () => {
@@ -56,37 +59,96 @@ const generatePlaceholderData = () => {
 
 // Process real data or use placeholder
 const chartDataPoints = computed(() => {
-  if (props.history && props.history.length > 0) {
+  // Check if we have simulation data
+  const hasSimulation = portfolioStore.simulationState.isPlaying || portfolioStore.simulationState.isPaused
+
+  if (hasSimulation && portfolioStore.combinedChartData.length > 0) {
+    // Use combined data (historical + simulation)
+    const historicalLength = portfolioStore.historicalData.length
+    const combinedData = portfolioStore.combinedChartData
+
+    const labels = combinedData.map((point) => formatChartDate(point.date))
+    const historicalValues = combinedData.slice(0, historicalLength).map((point) => point.value)
+    const simulationValues = new Array(historicalLength).fill(null).concat(
+      combinedData.slice(historicalLength).map((point) => point.value)
+    )
+
+    return { labels, historicalValues, simulationValues, hasSimulation: true }
+  } else if (props.history && props.history.length > 0) {
     // Use real data
     const labels = props.history.map((point) => formatChartDate(point.date))
     const data = props.history.map((point) => point.value)
-    return { labels, data }
+    return { labels, data, hasSimulation: false }
   } else {
     // Use placeholder
-    return generatePlaceholderData()
+    const placeholder = generatePlaceholderData()
+    return { ...placeholder, hasSimulation: false }
   }
 })
 
 // Chart data configuration
-const chartData = computed<ChartData<'line'>>(() => ({
-  labels: chartDataPoints.value.labels,
-  datasets: [
-    {
-      label: 'Portfolio Value',
-      data: chartDataPoints.value.data,
-      borderColor: '#f97316', // Orange line
-      backgroundColor: 'rgba(249, 115, 22, 0.02)', // Very subtle orange fill
-      borderWidth: 1.5, // Thin line
-      tension: 0.4, // Smooth curved line
-      pointRadius: 0, // Hide points by default
-      pointHoverRadius: 4, // Show small point on hover
-      pointHoverBackgroundColor: '#f97316',
-      pointHoverBorderColor: '#fff',
-      pointHoverBorderWidth: 2,
-      fill: true, // Fill area under line
-    },
-  ],
-}))
+const chartData = computed<ChartData<'line'>>(() => {
+  const dataPoints = chartDataPoints.value
+
+  if (dataPoints.hasSimulation) {
+    // Show two datasets: historical (solid) and simulation (dashed)
+    return {
+      labels: dataPoints.labels,
+      datasets: [
+        {
+          label: 'Historical',
+          data: dataPoints.historicalValues,
+          borderColor: '#f97316', // Orange line
+          backgroundColor: 'rgba(249, 115, 22, 0.02)', // Very subtle orange fill
+          borderWidth: 1.5,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#f97316',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
+          fill: true,
+        },
+        {
+          label: 'Simulation',
+          data: dataPoints.simulationValues,
+          borderColor: '#f97316', // Same orange
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [5, 5], // Dashed line
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#f97316',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
+          fill: false,
+        },
+      ],
+    }
+  } else {
+    // Single dataset for regular view
+    return {
+      labels: dataPoints.labels,
+      datasets: [
+        {
+          label: 'Portfolio Value',
+          data: dataPoints.data,
+          borderColor: '#f97316', // Orange line
+          backgroundColor: 'rgba(249, 115, 22, 0.02)', // Very subtle orange fill
+          borderWidth: 1.5, // Thin line
+          tension: 0.4, // Smooth curved line
+          pointRadius: 0, // Hide points by default
+          pointHoverRadius: 4, // Show small point on hover
+          pointHoverBackgroundColor: '#f97316',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
+          fill: true, // Fill area under line
+        },
+      ],
+    }
+  }
+})
 
 // Chart options configuration
 const chartOptions = computed(() => ({

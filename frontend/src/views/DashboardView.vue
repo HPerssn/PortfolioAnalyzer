@@ -8,7 +8,7 @@ import PortfolioChart from '@/components/PortfolioChart.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import HoldingsList from '@/components/HoldingsCard.vue'
 import AllocationList from '@/components/AllocationList.vue'
-import ActivityList from '@/components/ActivityList.vue'
+import SimulationControls from '@/components/SimulationControls.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 
 const portfolioStore = usePortfolioStore()
@@ -50,10 +50,13 @@ const handleCalculated = async (
       purchaseDate,
     })
     portfolioHistory.value = historyResponse.history
+    // Set historical data in store for simulation
+    portfolioStore.setHistoricalData(historyResponse.history)
   } catch (err) {
     console.error('Failed to fetch portfolio history:', err)
     // Don't show error to user, just use placeholder data in chart
     portfolioHistory.value = []
+    portfolioStore.setHistoricalData([])
   }
 
   // Fetch benchmark comparison
@@ -111,13 +114,6 @@ const handleNewPortfolio = () => {
 const toggleForm = () => {
   showForm.value = !showForm.value
 }
-
-// Sample activity data
-const activities = [
-  { type: 'buy' as const, symbol: 'AAPL', quantity: 10, date: 'Jan 1' },
-  { type: 'buy' as const, symbol: 'GOOGL', quantity: 5, date: 'Jan 1' },
-  { type: 'buy' as const, symbol: 'MSFT', quantity: 8, date: 'Jan 1' },
-]
 
 onMounted(() => {
   fetchPortfolio()
@@ -201,8 +197,7 @@ onMounted(() => {
 
         <!-- Sidebar (Right, 1/3) -->
         <div class="sidebar">
-          <AllocationList :assets="portfolio.assets" :total-value="portfolio.totalValue" />
-          <ActivityList :activities="activities" />
+          <SimulationControls />
         </div>
       </div>
     </div>
