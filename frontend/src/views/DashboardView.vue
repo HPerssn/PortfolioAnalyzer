@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
 import type { PortfolioSummary, PortfolioHistoryPoint, BenchmarkComparison } from '@/types/portfolio'
 import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
 import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
-import HoldingsList from '@/components/HoldingsCard.vue'
 import SimulationControls from '@/components/SimulationControls.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useMonteCarloStore } from '@/stores/monteCarloStore'
 
 const portfolioStore = usePortfolioStore()
+const monteCarloStore = useMonteCarloStore()
 const portfolio = ref<PortfolioSummary | null>(null)
 const portfolioHistory = ref<PortfolioHistoryPoint[]>([])
 const benchmarkComparison = ref<BenchmarkComparison | null>(null)
@@ -61,12 +62,12 @@ const handleCalculated = async (
     )
 
     // Set filtered historical data in store for simulation
-    portfolioStore.setHistoricalData(filtered)
+    monteCarloStore.setHistoricalData(filtered)
   } catch (err) {
     console.error('Failed to fetch portfolio history:', err)
     // Don't show error to user, just use placeholder data in chart
     portfolioHistory.value = []
-    portfolioStore.setHistoricalData([])
+    monteCarloStore.setHistoricalData([])
   }
 
   // Fetch benchmark comparison
@@ -155,12 +156,12 @@ const filteredHistory = computed(() => {
       return portfolioHistory.value
   }
 
-  const filtered = portfolioHistory.value.filter((point) => new Date(point.date) >= cutoffDate)
+  return portfolioHistory.value.filter((point) => new Date(point.date) >= cutoffDate)
+})
 
-  // Update historical data in store whenever filtered history changes
-  portfolioStore.setHistoricalData(filtered)
-
-  return filtered
+// Watcher to update historical data in store when filtered history changes
+watch(filteredHistory, (newFiltered) => {
+  monteCarloStore.setHistoricalData(newFiltered)
 })
 
 const handleTimeframeChange = (event: Event) => {

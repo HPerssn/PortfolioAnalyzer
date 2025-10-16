@@ -14,7 +14,7 @@ import {
 } from 'chart.js'
 import type { PortfolioHistoryPoint } from '@/types/portfolio'
 import { formatChartDate, formatChartDateAdaptive } from '@/utils/formatters'
-import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useMonteCarloStore } from '@/stores/monteCarloStore'
 import {
   PLACEHOLDER_START_VALUE,
   PLACEHOLDER_DAYS_BACK,
@@ -36,7 +36,7 @@ const props = defineProps<{
 // Default to 1Y if timeframe not provided
 const currentTimeframe = computed(() => props.timeframe ?? '1Y')
 
-const portfolioStore = usePortfolioStore()
+const monteCarloStore = useMonteCarloStore()
 
 // Generate placeholder data if no real data is provided
 const generatePlaceholderData = () => {
@@ -63,11 +63,11 @@ const generatePlaceholderData = () => {
 
 // Memoized historical data processing (computed once, doesn't change during simulation)
 const historicalDataMemo = computed(() => {
-  const historical = portfolioStore.historicalData
+  const historical = monteCarloStore.historicalData
   return {
-    values: historical.map((point) => point.value),
-    labels: historical.map((point) => formatChartDateAdaptive(point.date, currentTimeframe.value)),
-    rawDates: historical.map((point) => point.date),
+    values: historical.map((point: PortfolioHistoryPoint) => point.value),
+    labels: historical.map((point: PortfolioHistoryPoint) => formatChartDateAdaptive(point.date, currentTimeframe.value)),
+    rawDates: historical.map((point: PortfolioHistoryPoint) => point.date),
     length: historical.length,
   }
 })
@@ -75,17 +75,17 @@ const historicalDataMemo = computed(() => {
 // Process real data or use placeholder
 const chartDataPoints = computed(() => {
   // Check if we have simulation data
-  const hasSimulation = portfolioStore.simulationState.isPlaying || portfolioStore.simulationState.isPaused
+  const hasSimulation = monteCarloStore.simulationState.isPlaying || monteCarloStore.simulationState.isPaused || monteCarloStore.simulationState.isComplete
 
-  if (hasSimulation && portfolioStore.simulationPercentiles.p50.length > 0) {
+  if (hasSimulation && monteCarloStore.simulationPercentiles.p50.length > 0) {
     // Use percentile bands for simulation
-    const currentIndex = portfolioStore.simulationState.currentIndex
+    const currentIndex = monteCarloStore.simulationState.currentIndex
     const historical = historicalDataMemo.value
 
     // Pre-calculate simulation slices (faster than multiple slice operations)
-    const p25 = portfolioStore.simulationPercentiles.p25
-    const p50 = portfolioStore.simulationPercentiles.p50
-    const p75 = portfolioStore.simulationPercentiles.p75
+    const p25 = monteCarloStore.simulationPercentiles.p25
+    const p50 = monteCarloStore.simulationPercentiles.p50
+    const p75 = monteCarloStore.simulationPercentiles.p75
 
     // Build labels efficiently - reuse historical labels
     const simulationLabels: string[] = []
@@ -134,7 +134,7 @@ const chartDataPoints = computed(() => {
 // Chart data configuration
 const chartData = computed<ChartData<'line'>>(() => {
   const dataPoints = chartDataPoints.value
-  const showBand = portfolioStore.showConfidenceBand
+  const showBand = monteCarloStore.showConfidenceBand
 
   if (dataPoints.hasSimulation) {
     const datasets: any[] = [
@@ -276,13 +276,13 @@ const chartOptions = computed(() => ({
 
           if (isSimulation) {
             const dataIndex = context.dataIndex
-            const historicalLength = portfolioStore.historicalData.length
+            const historicalLength = monteCarloStore.historicalData.length
             const simulationIndex = dataIndex - historicalLength + 1
 
-            if (simulationIndex >= 0 && simulationIndex < portfolioStore.simulationPercentiles.p50.length) {
-              const p25 = portfolioStore.simulationPercentiles.p25[simulationIndex]?.value ?? 0
-              const p50 = portfolioStore.simulationPercentiles.p50[simulationIndex]?.value ?? 0
-              const p75 = portfolioStore.simulationPercentiles.p75[simulationIndex]?.value ?? 0
+            if (simulationIndex >= 0 && simulationIndex < monteCarloStore.simulationPercentiles.p50.length) {
+              const p25 = monteCarloStore.simulationPercentiles.p25[simulationIndex]?.value ?? 0
+              const p50 = monteCarloStore.simulationPercentiles.p50[simulationIndex]?.value ?? 0
+              const p75 = monteCarloStore.simulationPercentiles.p75[simulationIndex]?.value ?? 0
 
               // Calculate mean from percentiles (approximation)
               const mean = Math.round((p25 + p50 + p75) / 3)

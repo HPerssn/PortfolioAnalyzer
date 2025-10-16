@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useMonteCarloStore } from '@/stores/monteCarloStore'
 
-const portfolioStore = usePortfolioStore()
+const monteCarloStore = useMonteCarloStore()
 
 // Info modal state
 const showInfo = ref(false)
@@ -16,46 +16,45 @@ const selectedTimeframe = ref<5 | 10 | 20>(10)
 const selectedSpeed = ref<1 | 2 | 5 | 10>(1)
 
 // Computed state from store
-const isPlaying = computed(() => portfolioStore.simulationState.isPlaying)
-const isPaused = computed(() => portfolioStore.simulationState.isPaused)
-const simulationProgress = computed(() => portfolioStore.simulationState.progress)
-const showConfidenceBand = computed(() => portfolioStore.showConfidenceBand)
+const isPlaying = computed(() => monteCarloStore.simulationState.isPlaying)
+const isPaused = computed(() => monteCarloStore.simulationState.isPaused)
+const simulationProgress = computed(() => monteCarloStore.simulationState.progress)
+const showConfidenceBand = computed(() => monteCarloStore.showConfidenceBand)
 
 // Control handlers
 const handlePlay = () => {
   if (!isPlaying.value) {
-    portfolioStore.startSimulation(selectedTimeframe.value, selectedSpeed.value)
+    monteCarloStore.startSimulation(selectedTimeframe.value, selectedSpeed.value)
   } else if (isPaused.value) {
-    portfolioStore.resumeSimulation()
+    monteCarloStore.resumeSimulation()
   }
 }
 
 const handlePause = () => {
-  portfolioStore.pauseSimulation()
+  monteCarloStore.pauseSimulation()
 }
 
 const handleReset = () => {
-  portfolioStore.resetSimulation()
+  monteCarloStore.resetSimulation()
 }
 
 const handleTimeframeChange = (years: 5 | 10 | 20) => {
   selectedTimeframe.value = years
-  if (isPlaying.value) {
-    // Restart simulation with new timeframe
-    portfolioStore.resetSimulation()
-    portfolioStore.startSimulation(years, selectedSpeed.value)
+  if (isPlaying.value || monteCarloStore.simulationState.isComplete) {
+    // Reset simulation but don't auto-start - user must click Play again
+    monteCarloStore.resetSimulation()
   }
 }
 
 const handleSpeedChange = (speed: 1 | 2 | 5 | 10) => {
   selectedSpeed.value = speed
   if (isPlaying.value && !isPaused.value) {
-    portfolioStore.updateSimulationSpeed(speed)
+    monteCarloStore.updateSimulationSpeed(speed)
   }
 }
 
 const handleToggleConfidenceBand = () => {
-  portfolioStore.toggleConfidenceBand()
+  monteCarloStore.toggleConfidenceBand()
 }
 
 // Status text
@@ -69,7 +68,7 @@ const statusText = computed(() => {
 
 // Contextual help text - less number-focused, more qualitative
 const contextualText = computed(() => {
-  if (!isPlaying.value) {
+  if (!isPlaying.value && !monteCarloStore.simulationState.isComplete) {
     return 'Explore how your portfolio might evolve over time based on historical patterns'
   }
 
@@ -77,17 +76,17 @@ const contextualText = computed(() => {
   const isComplete = simulationProgress.value === 100
 
   // Calculate current year and month
-  const currentMonth = portfolioStore.simulationState.currentIndex
+  const currentMonth = monteCarloStore.simulationState.currentIndex
   const currentYear = Math.floor(currentMonth / 12)
   const currentMonthInYear = currentMonth % 12
 
   // Get current simulated value from median (p50)
-  const simulationData = portfolioStore.simulationPercentiles.p50
+  const simulationData = monteCarloStore.simulationPercentiles.p50
   if (simulationData.length > 0 && currentMonth > 0) {
     const dataIndex = Math.min(currentMonth - 1, simulationData.length - 1)
     const currentValue = simulationData[dataIndex]?.value ?? 0
-    const startValue = portfolioStore.historicalData.length > 0
-      ? portfolioStore.historicalData[portfolioStore.historicalData.length - 1]?.value ?? 0
+    const startValue = monteCarloStore.historicalData.length > 0
+      ? monteCarloStore.historicalData[monteCarloStore.historicalData.length - 1]?.value ?? 0
       : 0
     const returnPct = startValue > 0 ? ((currentValue - startValue) / startValue) * 100 : 0
 
@@ -106,8 +105,8 @@ const contextualText = computed(() => {
       const trajectory = getTrajectoryDescription(returnPct)
 
       // Get final percentile values for range
-      const finalP25 = portfolioStore.simulationPercentiles.p25[portfolioStore.simulationPercentiles.p25.length - 1]?.value ?? 0
-      const finalP75 = portfolioStore.simulationPercentiles.p75[portfolioStore.simulationPercentiles.p75.length - 1]?.value ?? 0
+      const finalP25 = monteCarloStore.simulationPercentiles.p25[monteCarloStore.simulationPercentiles.p25.length - 1]?.value ?? 0
+      const finalP75 = monteCarloStore.simulationPercentiles.p75[monteCarloStore.simulationPercentiles.p75.length - 1]?.value ?? 0
 
       const variationPct = startValue > 0 ? ((finalP75 - finalP25) / startValue) * 100 : 0
       const certainty = variationPct < 30 ? 'relatively stable' : variationPct < 80 ? 'moderate uncertainty' : 'wide range of possibilities'
