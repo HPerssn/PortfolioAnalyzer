@@ -13,7 +13,7 @@ import {
   type ChartData,
 } from 'chart.js'
 import type { PortfolioHistoryPoint } from '@/types/portfolio'
-import { formatChartDate } from '@/utils/formatters'
+import { formatChartDate, formatChartDateAdaptive } from '@/utils/formatters'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import {
   PLACEHOLDER_START_VALUE,
@@ -27,10 +27,14 @@ import {
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
-// Accept history data as a prop
+// Accept history data and timeframe as props
 const props = defineProps<{
   history?: PortfolioHistoryPoint[]
+  timeframe?: '1M' | '3M' | '1Y' | '5Y'
 }>()
+
+// Default to 1Y if timeframe not provided
+const currentTimeframe = computed(() => props.timeframe ?? '1Y')
 
 const portfolioStore = usePortfolioStore()
 
@@ -62,7 +66,8 @@ const historicalDataMemo = computed(() => {
   const historical = portfolioStore.historicalData
   return {
     values: historical.map((point) => point.value),
-    labels: historical.map((point) => formatChartDate(point.date)),
+    labels: historical.map((point) => formatChartDateAdaptive(point.date, currentTimeframe.value)),
+    rawDates: historical.map((point) => point.date),
     length: historical.length,
   }
 })
@@ -87,7 +92,7 @@ const chartDataPoints = computed(() => {
     for (let i = 1; i < currentIndex && i < p50.length; i++) {
       const point = p50[i]
       if (point) {
-        simulationLabels.push(formatChartDate(point.date))
+        simulationLabels.push(formatChartDateAdaptive(point.date, currentTimeframe.value))
       }
     }
     const labels = [...historical.labels, ...simulationLabels]
@@ -115,8 +120,8 @@ const chartDataPoints = computed(() => {
       hasSimulation: true,
     }
   } else if (props.history && props.history.length > 0) {
-    // Use real data
-    const labels = props.history.map((point) => formatChartDate(point.date))
+    // Use real data with adaptive formatting
+    const labels = props.history.map((point) => formatChartDateAdaptive(point.date, currentTimeframe.value))
     const data = props.history.map((point) => point.value)
     return { labels, data, hasSimulation: false }
   } else {
@@ -157,10 +162,10 @@ const chartData = computed<ChartData<'line'>>(() => {
       datasets.push({
         label: '75th Percentile',
         data: dataPoints.p75Values,
-        borderColor: 'rgba(249, 115, 22, 0.2)',
+        borderColor: 'rgba(249, 115, 22, 0.45)',
         backgroundColor: 'transparent',
-        borderWidth: 0.5,
-        borderDash: [2, 2],
+        borderWidth: 1,
+        borderDash: [4, 3],
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -172,10 +177,10 @@ const chartData = computed<ChartData<'line'>>(() => {
       datasets.push({
         label: '25th-75th Percentile Range',
         data: dataPoints.p25Values,
-        borderColor: 'rgba(249, 115, 22, 0.2)',
+        borderColor: 'rgba(249, 115, 22, 0.45)',
         backgroundColor: 'rgba(249, 115, 22, 0.08)',
-        borderWidth: 0.5,
-        borderDash: [2, 2],
+        borderWidth: 1,
+        borderDash: [4, 3],
         tension: 0.4,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -317,6 +322,8 @@ const chartOptions = computed(() => ({
         },
         maxRotation: 0,
         autoSkipPadding: 20,
+        // Adaptive maxTicksLimit based on timeframe
+        maxTicksLimit: currentTimeframe.value === '5Y' ? 6 : currentTimeframe.value === '1Y' ? 12 : 8,
       },
       border: {
         display: false,

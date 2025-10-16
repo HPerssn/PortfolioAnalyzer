@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { portfolioService } from '@/api/portfolioService'
 import type { PortfolioSummary, PortfolioHistoryPoint, BenchmarkComparison } from '@/types/portfolio'
 import PortfolioInputForm from '@/components/PortfolioInputForm.vue'
@@ -7,7 +7,6 @@ import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import HoldingsList from '@/components/HoldingsCard.vue'
-import AllocationList from '@/components/AllocationList.vue'
 import SimulationControls from '@/components/SimulationControls.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 
@@ -19,6 +18,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const showForm = ref(true)
 const inputFormRef = ref<InstanceType<typeof PortfolioInputForm> | null>(null)
+const selectedTimeframe = ref<'1M' | '3M' | '1Y' | '5Y'>('1Y')
 
 const fetchPortfolio = async () => {
   try {
@@ -50,8 +50,18 @@ const handleCalculated = async (
       purchaseDate,
     })
     portfolioHistory.value = historyResponse.history
-    // Set historical data in store for simulation
-    portfolioStore.setHistoricalData(historyResponse.history)
+
+    // Filter history based on selected timeframe for initial load
+    const now = new Date()
+    const cutoffDate = new Date(now)
+    cutoffDate.setFullYear(now.getFullYear() - 1) // Default 1Y
+
+    const filtered = historyResponse.history.filter(
+      (point) => new Date(point.date) >= cutoffDate,
+    )
+
+    // Set filtered historical data in store for simulation
+    portfolioStore.setHistoricalData(filtered)
   } catch (err) {
     console.error('Failed to fetch portfolio history:', err)
     // Don't show error to user, just use placeholder data in chart
@@ -113,6 +123,49 @@ const handleNewPortfolio = () => {
 
 const toggleForm = () => {
   showForm.value = !showForm.value
+}
+
+// Filter history based on selected timeframe
+const filteredHistory = computed(() => {
+  if (!portfolioHistory.value || portfolioHistory.value.length === 0) {
+    return []
+  }
+
+  const now = new Date()
+  let cutoffDate: Date
+
+  switch (selectedTimeframe.value) {
+    case '1M':
+      cutoffDate = new Date(now)
+      cutoffDate.setMonth(now.getMonth() - 1)
+      break
+    case '3M':
+      cutoffDate = new Date(now)
+      cutoffDate.setMonth(now.getMonth() - 3)
+      break
+    case '1Y':
+      cutoffDate = new Date(now)
+      cutoffDate.setFullYear(now.getFullYear() - 1)
+      break
+    case '5Y':
+      cutoffDate = new Date(now)
+      cutoffDate.setFullYear(now.getFullYear() - 5)
+      break
+    default:
+      return portfolioHistory.value
+  }
+
+  const filtered = portfolioHistory.value.filter((point) => new Date(point.date) >= cutoffDate)
+
+  // Update historical data in store whenever filtered history changes
+  portfolioStore.setHistoricalData(filtered)
+
+  return filtered
+})
+
+const handleTimeframeChange = (event: Event) => {
+  const target = event.target as HTMLSelectElement
+  selectedTimeframe.value = target.value as '1M' | '3M' | '1Y' | '5Y'
 }
 
 onMounted(() => {
@@ -183,16 +236,18 @@ onMounted(() => {
         <div class="chart-section">
           <div class="section-header">
             <h2>Performance</h2>
-            <div class="time-selector">
-              <button class="active">1D</button>
-              <button>1W</button>
-              <button>1M</button>
-              <button>3M</button>
-              <button>1Y</button>
-              <button>ALL</button>
-            </div>
+            <select
+              v-model="selectedTimeframe"
+              @change="handleTimeframeChange"
+              class="time-selector"
+            >
+              <option value="1M">1 Month</option>
+              <option value="3M">3 Months</option>
+              <option value="1Y">1 Year</option>
+              <option value="5Y">5 Years</option>
+            </select>
           </div>
-          <PortfolioChart :history="portfolioHistory" />
+          <PortfolioChart :history="filteredHistory" :timeframe="selectedTimeframe" :key="selectedTimeframe" />
         </div>
 
         <!-- Sidebar (Right, 1/3) -->
@@ -274,9 +329,9 @@ onMounted(() => {
 .btn-toggle-form {
   padding: 0.35rem 0.9rem;
   background: white;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--color-border);
   border-radius: 9999px; /* pill shape */
-  color: #666;
+  color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   font-weight: 400;
   cursor: pointer;
@@ -284,16 +339,16 @@ onMounted(() => {
 }
 
 .btn-toggle-form:hover {
-  border-color: #f97316;
-  color: #f97316;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: #fff7f0;
 }
 
 .btn-toggle-form:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: #e5e5e5;
-  color: #aaa;
+  border-color: var(--color-border);
+  color: var(--color-text-light);
 }
 
 .form-container {
@@ -369,30 +424,30 @@ onMounted(() => {
 }
 
 .time-selector {
-  display: flex;
-  gap: 4px;
-}
-
-.time-selector button {
   padding: 4px 12px;
   border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+  background: white;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
   font-weight: 400;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 32px;
 }
 
-.time-selector button:hover {
-  border-color: var(--color-border-hover);
-}
-
-.time-selector button.active {
-  background: var(--color-primary);
-  color: white;
+.time-selector:hover {
   border-color: var(--color-primary);
+}
+
+.time-selector:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
 }
 
 .sidebar {
@@ -412,12 +467,12 @@ onMounted(() => {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
+  background: var(--color-border-hover);
   border-radius: 4px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-  background: #a3a3a3;
+  background: var(--color-text-light);
 }
 
 /* --- Responsive Adjustments --- */

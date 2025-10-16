@@ -77,7 +77,6 @@ const contextualText = computed(() => {
   const isComplete = simulationProgress.value === 100
 
   // Calculate current year and month
-  const totalMonths = selectedTimeframe.value * 12
   const currentMonth = portfolioStore.simulationState.currentIndex
   const currentYear = Math.floor(currentMonth / 12)
   const currentMonthInYear = currentMonth % 12
@@ -140,13 +139,19 @@ const contextualText = computed(() => {
       </button>
     </div>
 
-    <!-- Info Modal (placeholder for user to fill) -->
-    <div v-if="showInfo" class="info-modal">
+    <!-- Info Modal -->
+    <div v-if="showInfo" class="info-modal" @click.self="toggleInfo">
       <div class="info-modal-content">
         <button class="close-button" @click="toggleInfo">&times;</button>
         <h4>Monte Carlo Simulation</h4>
-        <p class="info-placeholder">
-          [Information about Monte Carlo simulation will go here]
+        <p class="info-text">
+          Watch your portfolio grow forward in time. Each simulation uses historical patterns to project possible futures. not predictions, just possibilities.
+        </p>
+        <p class="info-text">
+          The median path shows the middle outcome. The range shows where most scenarios land. This helps you understand what patience might look like.
+        </p>
+        <p class="info-text">
+          Use this to think in years, not days.
         </p>
       </div>
     </div>
@@ -274,12 +279,6 @@ const contextualText = computed(() => {
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: all 0.2s ease;
-}
-
-.simulation-controls:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .section-title {
@@ -359,12 +358,15 @@ const contextualText = computed(() => {
   margin: 0 0 var(--spacing-md) 0;
 }
 
-.info-placeholder {
+.info-text {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   line-height: 1.6;
-  margin: 0;
-  font-style: italic;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.info-text:last-of-type {
+  margin-bottom: 0;
 }
 
 .close-button {
@@ -415,7 +417,7 @@ const contextualText = computed(() => {
 }
 
 .btn-control:hover:not(:disabled) {
-  border-color: #d4d4d4;
+  border-color: var(--color-border-hover);
 }
 
 .btn-control:disabled {
@@ -429,8 +431,8 @@ const contextualText = computed(() => {
 }
 
 .btn-play:hover:not(:disabled) {
-  border-color: #ea6b0a;
-  color: #ea6b0a;
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-hover);
 }
 
 .btn-pause,
@@ -483,7 +485,7 @@ const contextualText = computed(() => {
 }
 
 .btn-option:hover {
-  border-color: #d4d4d4;
+  border-color: var(--color-border-hover);
 }
 
 .btn-option.active {
@@ -505,7 +507,7 @@ const contextualText = computed(() => {
 }
 
 .btn-toggle:hover {
-  border-color: #d4d4d4;
+  border-color: var(--color-border-hover);
 }
 
 .btn-toggle.active {

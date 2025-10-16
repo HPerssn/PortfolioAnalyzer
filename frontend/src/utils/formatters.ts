@@ -24,3 +24,35 @@ export const formatChartDate = (dateString: string): string => {
   const day = date.getDate()
   return `${month} ${day}`
 }
+
+/**
+ * Adaptive date formatter for charts based on timeframe
+ * - 1M/3M: "Jan 15" (month + day)
+ * - 1Y: "Jan '24" (month + year)
+ * - 5Y: "2020" (year only)
+ */
+export const formatChartDateAdaptive = (dateString: string, timeframe: '1M' | '3M' | '1Y' | '5Y'): string => {
+  const date = new Date(dateString)
+
+  switch (timeframe) {
+    case '1M':
+    case '3M':
+      // Show month and day for shorter timeframes
+      const month = date.toLocaleDateString('en-US', { month: 'short' })
+      const day = date.getDate()
+      return `${month} ${day}`
+
+    case '1Y':
+      // Show month and year for 1-year view
+      const monthShort = date.toLocaleDateString('en-US', { month: 'short' })
+      const year = date.getFullYear().toString().slice(-2)
+      return `${monthShort} '${year}`
+
+    case '5Y':
+      // Show year only for 5-year view
+      return date.getFullYear().toString()
+
+    default:
+      return formatChartDate(dateString)
+  }
+}
