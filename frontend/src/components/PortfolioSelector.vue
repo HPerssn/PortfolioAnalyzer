@@ -137,7 +137,7 @@ const deletePortfolio = async (id: number, event: Event) => {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   background: white;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
@@ -146,7 +146,7 @@ const deletePortfolio = async (id: number, event: Event) => {
 }
 
 .selector-button:hover {
-  border-color: #f97316;
+  border-color: var(--color-primary);
 }
 
 .selector-label {
@@ -155,7 +155,7 @@ const deletePortfolio = async (id: number, event: Event) => {
 
 .selector-arrow {
   font-size: 10px;
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .dropdown {
@@ -164,12 +164,21 @@ const deletePortfolio = async (id: number, event: Event) => {
   right: 0;
   min-width: 300px;
   background: white;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 100;
   max-height: 400px;
   overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .dropdown {
+    left: 0;
+    right: auto;
+    min-width: min(300px, 100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+  }
 }
 
 .new-portfolio-btn {
@@ -180,8 +189,8 @@ const deletePortfolio = async (id: number, event: Event) => {
   padding: var(--spacing-md);
   background: white;
   border: none;
-  border-bottom: 1px solid #e5e5e5;
-  color: #f97316;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-primary);
   font-size: var(--font-size-sm);
   font-weight: 400;
   cursor: pointer;
@@ -202,7 +211,7 @@ const deletePortfolio = async (id: number, event: Event) => {
   border-radius: 50%;
   background: #fff7ed;
   border: 1px solid #fed7aa;
-  color: #f97316;
+  color: var(--color-primary);
   font-size: 16px;
   line-height: 1;
   font-weight: 500;
@@ -225,7 +234,7 @@ const deletePortfolio = async (id: number, event: Event) => {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--color-border);
   transition: background 0.2s;
 }
 
@@ -234,7 +243,7 @@ const deletePortfolio = async (id: number, event: Event) => {
 }
 
 .dropdown-item:hover {
-  background: #fafafa;
+  background: var(--color-bg-base);
 }
 
 .dropdown-item.active {
@@ -270,14 +279,14 @@ const deletePortfolio = async (id: number, event: Event) => {
   padding: 0;
   background: transparent;
   border: none;
-  color: #999;
+  color: var(--color-text-muted);
   font-size: 20px;
   cursor: pointer;
   transition: color 0.2s;
 }
 
 .btn-delete:hover {
-  color: #ef4444;
+  color: var(--color-negative);
 }
 
 .confirm-delete {
@@ -295,22 +304,23 @@ const deletePortfolio = async (id: number, event: Event) => {
 }
 
 .btn-confirm-delete {
-  background: #ef4444;
-  border: 1px solid #ef4444;
+  background: var(--color-negative);
+  border: 1px solid var(--color-negative);
   color: white;
 }
 
 .btn-confirm-delete:hover {
-  background: #dc2626;
+  background: var(--color-negative);
+  filter: brightness(0.9);
 }
 
 .btn-cancel-delete {
   background: white;
-  border: 1px solid #e5e5e5;
-  color: #666;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .btn-cancel-delete:hover {
-  border-color: #999;
+  border-color: var(--color-border-hover);
 }
 </style>

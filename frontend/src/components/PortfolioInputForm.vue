@@ -371,7 +371,7 @@ const savePortfolio = async () => {
 <style scoped>
 .portfolio-form {
   background: var(--color-card-bg);
-  border: 1px solid #f3f3f3;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--spacing-xl);
 }
@@ -400,7 +400,7 @@ const savePortfolio = async () => {
   left: 0;
   width: 60px;
   height: 2px;
-  background: var(--color-accent, #f97316); /* thin orange underline */
+  background: var(--color-primary);
   border-radius: 1px;
 }
 
@@ -425,7 +425,7 @@ const savePortfolio = async () => {
   width: 100%;
   padding: 0.6rem 0.8rem;
   background: white;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
@@ -438,21 +438,21 @@ const savePortfolio = async () => {
 
 .input:focus {
   outline: none;
-  border-color: #f97316; /* orange accent */
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
 }
 
 .input::placeholder {
-  color: #999;
+  color: var(--color-text-light);
 }
 
 .input-error {
-  border-color: #ef4444; /* red */
-  background: #fef2f2; /* light red background */
+  border-color: var(--color-negative);
+  background: var(--color-error-bg);
 }
 
 .input-error:focus {
-  border-color: #dc2626; /* darker red */
+  border-color: var(--color-negative);
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
 }
 
@@ -520,7 +520,7 @@ const savePortfolio = async () => {
   padding: 0;
   background: transparent;
   border: none;
-  color: #aaa;
+  color: var(--color-text-light);
   font-size: 22px;
   cursor: pointer;
   line-height: 1;
@@ -530,7 +530,7 @@ const savePortfolio = async () => {
 }
 
 .btn-remove:hover:not(:disabled) {
-  color: #f97316;
+  color: var(--color-primary);
   transform: scale(1.1);
 }
 
@@ -544,17 +544,17 @@ const savePortfolio = async () => {
 .btn-add {
   padding: var(--spacing-sm) var(--spacing-md);
   background: white;
-  border: 1px dashed #e5e5e5;
+  border: 1px dashed var(--color-border);
   border-radius: 6px;
-  color: #999;
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-add:hover {
-  border-color: #f97316;
-  color: #f97316;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: rgba(249, 115, 22, 0.03);
 }
 
@@ -578,9 +578,9 @@ const savePortfolio = async () => {
   flex: 1;
   padding: 0.5rem 1.2rem;
   background: white;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-weight: 400;
   cursor: pointer;
@@ -589,8 +589,8 @@ const savePortfolio = async () => {
 
 .btn-calculate:hover:not(:disabled),
 .btn-save:hover:not(:disabled) {
-  border-color: #f97316;
-  color: #f97316;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: #fff7f0;
 }
 
@@ -598,8 +598,8 @@ const savePortfolio = async () => {
 .btn-save:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: #e5e5e5;
-  color: #aaa;
+  border-color: var(--color-border);
+  color: var(--color-text-light);
   background: white;
 }
 
@@ -631,7 +631,7 @@ const savePortfolio = async () => {
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-lg);
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-header h3 {
@@ -645,7 +645,7 @@ const savePortfolio = async () => {
   background: transparent;
   border: none;
   font-size: 24px;
-  color: #999;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -654,7 +654,7 @@ const savePortfolio = async () => {
 }
 
 .modal-close:hover {
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .modal-body {
@@ -679,7 +679,7 @@ const savePortfolio = async () => {
   display: flex;
   gap: var(--spacing-sm);
   padding: var(--spacing-lg);
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--color-border);
   justify-content: flex-end;
 }
 
@@ -687,9 +687,9 @@ const savePortfolio = async () => {
 .btn-confirm {
   padding: 0.5rem 1.2rem;
   background: white;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-weight: 400;
   cursor: pointer;
@@ -697,29 +697,59 @@ const savePortfolio = async () => {
 }
 
 .btn-cancel:hover {
-  border-color: #999;
-  color: #333;
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
 }
 
 .btn-confirm:hover:not(:disabled) {
-  border-color: #f97316;
-  color: #f97316;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: #fff7f0;
 }
 
 .btn-confirm:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: #e5e5e5;
-  color: #aaa;
+  border-color: var(--color-border);
+  color: var(--color-text-light);
 }
 
 /* ---------- RESPONSIVE ---------- */
 
 @media (max-width: 768px) {
+  .portfolio-form {
+    padding: var(--spacing-lg);
+  }
+
   .holding-row,
   .holdings-header {
     grid-template-columns: 1fr 80px 40px;
+  }
+
+  .quantity-input {
+    text-align: left;
+  }
+
+  .date-input {
+    max-width: 100%;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .btn-calculate,
+  .btn-save {
+    width: 100%;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .btn-cancel,
+  .btn-confirm {
+    width: 100%;
   }
 }
 </style>
