@@ -4,12 +4,9 @@ import { useMonteCarloStore } from '@/stores/monteCarloStore'
 
 const monteCarloStore = useMonteCarloStore()
 
-// Info modal state
+// Info state
 const showInfo = ref(false)
 
-const toggleInfo = () => {
-  showInfo.value = !showInfo.value
-}
 
 // Local state for controls
 const selectedTimeframe = ref<5 | 10 | 20>(10)
@@ -133,26 +130,16 @@ const contextualText = computed(() => {
     <!-- Section Header -->
     <div class="section-title">
       <h3>SIMULATION</h3>
-      <button class="info-button" @click="toggleInfo" aria-label="Information about Monte Carlo simulation">
+      <button class="info-button" @click="showInfo = !showInfo" aria-label="Toggle information">
         <span class="info-icon">i</span>
       </button>
     </div>
 
-    <!-- Info Modal -->
-    <div v-if="showInfo" class="info-modal" @click.self="toggleInfo">
-      <div class="info-modal-content">
-        <button class="close-button" @click="toggleInfo">&times;</button>
-        <h4>Monte Carlo Simulation</h4>
-        <p class="info-text">
-          Watch your portfolio grow forward in time. Each simulation uses historical patterns to project possible futures. not predictions, just possibilities.
-        </p>
-        <p class="info-text">
-          The median path shows the middle outcome. The range shows where most scenarios land. This helps you understand what patience might look like.
-        </p>
-        <p class="info-text">
-          Use this to think in years, not days.
-        </p>
-      </div>
+    <!-- Info Panel (Collapsible) -->
+    <div v-if="showInfo" class="info-panel">
+      <p class="info-text">
+        Use these controls to adjust your simulation timeframe, speed, and display options.
+      </p>
     </div>
 
     <!-- Unified Layout -->
@@ -182,82 +169,79 @@ const contextualText = computed(() => {
         </button>
       </div>
 
-      <!-- Options Row -->
-      <div class="options-row">
-        <!-- Timeframe -->
-        <div class="option-group">
-          <label class="option-label">Timeframe</label>
-          <div class="option-buttons">
-            <button
-              @click="handleTimeframeChange(5)"
-              :class="{ active: selectedTimeframe === 5 }"
-              class="btn-option"
-            >
-              5Y
-            </button>
-            <button
-              @click="handleTimeframeChange(10)"
-              :class="{ active: selectedTimeframe === 10 }"
-              class="btn-option"
-            >
-              10Y
-            </button>
-            <button
-              @click="handleTimeframeChange(20)"
-              :class="{ active: selectedTimeframe === 20 }"
-              class="btn-option"
-            >
-              20Y
-            </button>
-          </div>
-        </div>
-
-        <!-- Speed -->
-        <div class="option-group">
-          <label class="option-label">Speed</label>
-          <div class="option-buttons">
-            <button
-              @click="handleSpeedChange(1)"
-              :class="{ active: selectedSpeed === 1 }"
-              class="btn-option"
-            >
-              1x
-            </button>
-            <button
-              @click="handleSpeedChange(2)"
-              :class="{ active: selectedSpeed === 2 }"
-              class="btn-option"
-            >
-              2x
-            </button>
-            <button
-              @click="handleSpeedChange(5)"
-              :class="{ active: selectedSpeed === 5 }"
-              class="btn-option"
-            >
-              5x
-            </button>
-            <button
-              @click="handleSpeedChange(10)"
-              :class="{ active: selectedSpeed === 10 }"
-              class="btn-option"
-            >
-              10x
-            </button>
-          </div>
-        </div>
-
-        <!-- Display Toggle -->
-        <div class="option-group">
-          <label class="option-label">Display</label>
+      <!-- Timeframe -->
+      <div class="control-section">
+        <label class="section-label">Timeframe</label>
+        <div class="button-row">
           <button
-            @click="handleToggleConfidenceBand"
-            :class="{ active: showConfidenceBand }"
-            class="btn-toggle"
+            @click="handleTimeframeChange(5)"
+            :class="{ active: selectedTimeframe === 5 }"
+            class="btn-option"
           >
-            Range
+            5Y
+          </button>
+          <button
+            @click="handleTimeframeChange(10)"
+            :class="{ active: selectedTimeframe === 10 }"
+            class="btn-option"
+          >
+            10Y
+          </button>
+          <button
+            @click="handleTimeframeChange(20)"
+            :class="{ active: selectedTimeframe === 20 }"
+            class="btn-option"
+          >
+            20Y
           </button>
         </div>
+      </div>
+
+     <!-- Speed -->
+     <div class="control-section">
+        <label class="section-label">Speed</label>
+        <div class="button-row">
+          <button
+            @click="handleSpeedChange(1)"
+            :class="{ active: selectedSpeed === 1 }"
+            class="btn-option"
+          >
+            1x
+          </button>
+          <button
+            @click="handleSpeedChange(2)"
+            :class="{ active: selectedSpeed === 2 }"
+            class="btn-option"
+          >
+            2x
+          </button>
+          <button
+            @click="handleSpeedChange(5)"
+            :class="{ active: selectedSpeed === 5 }"
+            class="btn-option"
+          >
+            5x
+          </button>
+          <button
+            @click="handleSpeedChange(10)"
+            :class="{ active: selectedSpeed === 10 }"
+            class="btn-option"
+          >
+            10x
+          </button>
+        </div>
+      </div>
+
+      <!-- Show Confidence Range Checkbox -->
+      <div class="control-section">
+        <label class="checkbox-row">
+          <input
+            type="checkbox"
+            :checked="showConfidenceBand"
+            @change="handleToggleConfidenceBand"
+          />
+          <span>Show confidence range</span>
+        </label>
       </div>
 
       <!-- Status Text -->
@@ -273,19 +257,23 @@ const contextualText = computed(() => {
 .simulation-controls {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-xl);
+  gap: 8px;
+  padding: 12px;
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  max-height: 100%;
+  overflow: hidden;
+  overflow-y: auto;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: var(--spacing-md);
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
+  margin-bottom: 2px;
 }
 
 .section-title h3 {
@@ -394,12 +382,12 @@ const contextualText = computed(() => {
 .controls-layout {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 10px;
 }
 
 .controls-row {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 8px;
   align-items: center;
 }
 
@@ -447,23 +435,46 @@ const contextualText = computed(() => {
   border: none;
 }
 
-.options-row {
-  display: flex;
-  gap: var(--spacing-xl);
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.option-group {
+.control-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
-.option-label {
+.section-label {
   font-size: var(--font-size-xs);
-  font-weight: 400;
+  font-weight: 500;
   color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: default;
+}
+
+.button-row {
+  display: flex;
+  gap: 6px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.checkbox-row input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.checkbox-row:hover {
+  color: var(--color-text-primary);
 }
 
 .option-buttons {
@@ -472,7 +483,8 @@ const contextualText = computed(() => {
 }
 
 .btn-option {
-  padding: 6px 14px;
+  flex: 1;
+  padding: 6px 12px;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-muted);
@@ -481,6 +493,7 @@ const contextualText = computed(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 0;
 }
 
 .btn-option:hover {
@@ -515,12 +528,27 @@ const contextualText = computed(() => {
   background: transparent;
 }
 
+.info-panel {
+  background: rgba(249, 115, 22, 0.03);
+  border-left: 2px solid var(--color-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 2px;
+}
+
+.info-panel .info-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
 .status-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding-top: var(--spacing-md);
+  gap: 3px;
+  padding-top: 6px;
   border-top: 1px solid var(--color-border);
+  margin-top: 6px;
 }
 
 .status-text {
@@ -534,6 +562,6 @@ const contextualText = computed(() => {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.4;
 }
 </style>
