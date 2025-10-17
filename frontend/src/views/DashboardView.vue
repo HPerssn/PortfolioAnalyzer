@@ -19,7 +19,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const showForm = ref(true)
 const inputFormRef = ref<InstanceType<typeof PortfolioInputForm> | null>(null)
-const selectedTimeframe = ref<'1M' | '3M' | '1Y' | '5Y'>('1Y')
+const selectedTimeframe = ref<'1M' | '3M' | '1Y' | '5Y' | 'All'>('1Y')
 
 const fetchPortfolio = async () => {
   try {
@@ -152,6 +152,9 @@ const filteredHistory = computed(() => {
       cutoffDate = new Date(now)
       cutoffDate.setFullYear(now.getFullYear() - 5)
       break
+    case 'All':
+      // Return all available data
+      return portfolioHistory.value
     default:
       return portfolioHistory.value
   }
@@ -166,7 +169,7 @@ watch(filteredHistory, (newFiltered) => {
 
 const handleTimeframeChange = (event: Event) => {
   const target = event.target as HTMLSelectElement
-  selectedTimeframe.value = target.value as '1M' | '3M' | '1Y' | '5Y'
+  selectedTimeframe.value = target.value as '1M' | '3M' | '1Y' | '5Y' | 'All'
 }
 
 onMounted(() => {
@@ -246,6 +249,7 @@ onMounted(() => {
               <option value="3M">3 Months</option>
               <option value="1Y">1 Year</option>
               <option value="5Y">5 Years</option>
+              <option value="All">All</option>
             </select>
           </div>
           <PortfolioChart :history="filteredHistory" :timeframe="selectedTimeframe" :key="selectedTimeframe" />

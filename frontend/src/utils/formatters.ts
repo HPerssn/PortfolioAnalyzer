@@ -29,9 +29,9 @@ export const formatChartDate = (dateString: string): string => {
  * Adaptive date formatter for charts based on timeframe
  * - 1M/3M: "Jan 15" (month + day)
  * - 1Y: "Jan '24" (month + year)
- * - 5Y: "2020" (year only)
+ * - 5Y/All: "2020" (year only)
  */
-export const formatChartDateAdaptive = (dateString: string, timeframe: '1M' | '3M' | '1Y' | '5Y'): string => {
+export const formatChartDateAdaptive = (dateString: string, timeframe: '1M' | '3M' | '1Y' | '5Y' | 'All'): string => {
   const date = new Date(dateString)
 
   switch (timeframe) {
@@ -49,7 +49,8 @@ export const formatChartDateAdaptive = (dateString: string, timeframe: '1M' | '3
       return `${monthShort} '${year}`
 
     case '5Y':
-      // Show year only for 5-year view
+    case 'All':
+      // Show year only for 5-year and all-data views
       return date.getFullYear().toString()
 
     default:

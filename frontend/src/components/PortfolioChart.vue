@@ -30,7 +30,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 // Accept history data and timeframe as props
 const props = defineProps<{
   history?: PortfolioHistoryPoint[]
-  timeframe?: '1M' | '3M' | '1Y' | '5Y'
+  timeframe?: '1M' | '3M' | '1Y' | '5Y' | 'All'
 }>()
 
 // Default to 1Y if timeframe not provided
@@ -323,7 +323,7 @@ const chartOptions = computed(() => ({
         maxRotation: 0,
         autoSkipPadding: 20,
         // Adaptive maxTicksLimit based on timeframe
-        maxTicksLimit: currentTimeframe.value === '5Y' ? 6 : currentTimeframe.value === '1Y' ? 12 : 8,
+        maxTicksLimit: currentTimeframe.value === 'All' ? 4 : currentTimeframe.value === '5Y' ? 6 : currentTimeframe.value === '1Y' ? 12 : 8,
       },
       border: {
         display: false,
