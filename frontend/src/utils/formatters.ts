@@ -1,11 +1,35 @@
+import { useCurrencyStore } from '@/stores/currencyStore'
+import { CURRENCIES, type CurrencyCode } from '@/constants/currencies'
+
 /**
- * Currency formatter (Swedish locale, USD currency)
+ * Format currency with dynamic currency and conversion
+ * This is a composable-friendly version that reads from the store
  */
 export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('sv-SE', {
+  const currencyStore = useCurrencyStore()
+  return formatCurrencyWithCode(
+    value,
+    currencyStore.selectedCurrency,
+    currencyStore.getExchangeRate()
+  )
+}
+
+/**
+ * Pure currency formatter that works with explicit currency code and exchange rate
+ * Use this when you need to avoid reactive dependencies
+ */
+export const formatCurrencyWithCode = (
+  value: number,
+  currencyCode: CurrencyCode = 'USD',
+  exchangeRate: number = 1
+): string => {
+  const convertedValue = value * exchangeRate
+  const currency = CURRENCIES[currencyCode]
+
+  return new Intl.NumberFormat(currency.locale, {
     style: 'currency',
-    currency: 'USD',
-  }).format(value)
+    currency: currencyCode,
+  }).format(convertedValue)
 }
 
 /**

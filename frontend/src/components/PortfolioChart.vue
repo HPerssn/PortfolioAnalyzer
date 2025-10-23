@@ -13,8 +13,9 @@ import {
   type ChartData,
 } from 'chart.js'
 import type { PortfolioHistoryPoint } from '@/types/portfolio'
-import { formatChartDate, formatChartDateAdaptive } from '@/utils/formatters'
+import { formatChartDate, formatChartDateAdaptive, formatCurrencyWithCode } from '@/utils/formatters'
 import { useMonteCarloStore } from '@/stores/monteCarloStore'
+import { useCurrencyStore } from '@/stores/currencyStore'
 import {
   PLACEHOLDER_START_VALUE,
   PLACEHOLDER_DAYS_BACK,
@@ -27,6 +28,19 @@ import {
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
+/**
+ * Format large numbers as compact notation (10k, 1.5M, etc.)
+ */
+const formatCompactNumber = (value: number): string => {
+  if (Math.abs(value) >= 1000000) {
+    return (value / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  }
+  if (Math.abs(value) >= 1000) {
+    return (value / 1000).toFixed(0) + 'k'
+  }
+  return Math.round(value).toString()
+}
+
 // Accept history data and timeframe as props
 const props = defineProps<{
   history?: PortfolioHistoryPoint[]
@@ -37,6 +51,7 @@ const props = defineProps<{
 const currentTimeframe = computed(() => props.timeframe ?? '1Y')
 
 const monteCarloStore = useMonteCarloStore()
+const currencyStore = useCurrencyStore()
 
 // Generate placeholder data if no real data is provided
 const generatePlaceholderData = () => {
@@ -131,9 +146,31 @@ const chartDataPoints = computed(() => {
   }
 })
 
+// Convert data points to selected currency
+const convertedChartDataPoints = computed(() => {
+  const dataPoints = chartDataPoints.value
+  const exchangeRate = currencyStore.getExchangeRate()
+
+  if (dataPoints.hasSimulation && dataPoints.historicalValues && dataPoints.p25Values && dataPoints.p50Values && dataPoints.p75Values) {
+    return {
+      ...dataPoints,
+      historicalValues: dataPoints.historicalValues.map((v) => v * exchangeRate),
+      p25Values: dataPoints.p25Values.map((v) => (v !== null ? v * exchangeRate : null)),
+      p50Values: dataPoints.p50Values.map((v) => (v !== null ? v * exchangeRate : null)),
+      p75Values: dataPoints.p75Values.map((v) => (v !== null ? v * exchangeRate : null)),
+    }
+  } else if (!dataPoints.hasSimulation && dataPoints.data) {
+    return {
+      ...dataPoints,
+      data: dataPoints.data.map((v) => v * exchangeRate),
+    }
+  }
+  return dataPoints
+})
+
 // Chart data configuration
 const chartData = computed<ChartData<'line'>>(() => {
-  const dataPoints = chartDataPoints.value
+  const dataPoints = convertedChartDataPoints.value
   const showBand = monteCarloStore.showConfidenceBand
 
   if (dataPoints.hasSimulation) {
@@ -274,6 +311,9 @@ const chartOptions = computed(() => ({
           const datasetLabel = context.dataset.label
           const isSimulation = datasetLabel && (datasetLabel.includes('Projection') || datasetLabel.includes('Percentile'))
 
+          // Get current currency (value is already converted)
+          const currency = currencyStore.selectedCurrency
+
           if (isSimulation) {
             const dataIndex = context.dataIndex
             const historicalLength = monteCarloStore.historicalData.length
@@ -283,6 +323,7 @@ const chartOptions = computed(() => ({
               const p25 = monteCarloStore.simulationPercentiles.p25[simulationIndex]?.value ?? 0
               const p50 = monteCarloStore.simulationPercentiles.p50[simulationIndex]?.value ?? 0
               const p75 = monteCarloStore.simulationPercentiles.p75[simulationIndex]?.value ?? 0
+              const exchangeRate = currencyStore.getExchangeRate()
 
               // Calculate mean from percentiles (approximation)
               const mean = Math.round((p25 + p50 + p75) / 3)
@@ -290,9 +331,9 @@ const chartOptions = computed(() => ({
               // Only show for the median projection line to avoid duplicates
               if (datasetLabel === 'Median Projection') {
                 return [
-                  `High: $${p75.toLocaleString('en-US')}`,
-                  `Mean: $${mean.toLocaleString('en-US')}`,
-                  `Low: $${p25.toLocaleString('en-US')}`
+                  `High: ${formatCurrencyWithCode(p75, currency, exchangeRate)}`,
+                  `Mean: ${formatCurrencyWithCode(mean, currency, exchangeRate)}`,
+                  `Low: ${formatCurrencyWithCode(p25, currency, exchangeRate)}`
                 ]
               }
               // For other simulation datasets, return empty to hide them
@@ -300,7 +341,8 @@ const chartOptions = computed(() => ({
             }
           }
 
-          return `$${value.toLocaleString('en-US')}`
+          // Value is already converted, just format it
+          return formatCompactNumber(value) + ' ' + currency
         },
       },
     },
@@ -345,7 +387,9 @@ const chartOptions = computed(() => ({
           family: "'Inter', sans-serif",
         },
         callback: (value: any) => {
-          return `$${(value as number).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+          const currency = currencyStore.selectedCurrency
+          const compactValue = formatCompactNumber(value as number)
+          return `${compactValue} ${currency}`
         },
         padding: 8,
       },

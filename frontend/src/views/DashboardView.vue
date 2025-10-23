@@ -7,11 +7,14 @@ import PortfolioSelector from '@/components/PortfolioSelector.vue'
 import PortfolioChart from '@/components/PortfolioChart.vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import SimulationControls from '@/components/SimulationControls.vue'
+import CurrencySelector from '@/components/CurrencySelector.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useMonteCarloStore } from '@/stores/monteCarloStore'
+import { useCurrencyStore } from '@/stores/currencyStore'
 
 const portfolioStore = usePortfolioStore()
 const monteCarloStore = useMonteCarloStore()
+const currencyStore = useCurrencyStore()
 const portfolio = ref<PortfolioSummary | null>(null)
 const portfolioHistory = ref<PortfolioHistoryPoint[]>([])
 const benchmarkComparison = ref<BenchmarkComparison | null>(null)
@@ -171,7 +174,12 @@ const handleTimeframeChange = (event: Event) => {
   selectedTimeframe.value = target.value as '1M' | '3M' | '1Y' | '5Y' | 'All'
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Initialize currency from localStorage or auto-detect
+  currencyStore.initializeCurrency()
+  // Fetch exchange rates
+  await currencyStore.fetchExchangeRates()
+  // Load portfolio data
   fetchPortfolio()
 })
 </script>
@@ -189,6 +197,7 @@ onMounted(() => {
           @portfolio-loaded="handlePortfolioLoaded"
           @new-portfolio="handleNewPortfolio"
         />
+        <CurrencySelector />
         <button @click="toggleForm" class="btn-toggle-form">
           {{ showForm ? 'Hide Form' : 'Edit Portfolio' }}
         </button>
