@@ -52,7 +52,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   async function savePortfolio(
     name: string,
     purchaseDate: string,
-    holdings: Array<{ symbol: string; quantity: number }>,
+    holdings: Array<{ symbol: string; quantity: number; purchaseDate?: string }>,
   ) {
     isLoading.value = true
     error.value = null

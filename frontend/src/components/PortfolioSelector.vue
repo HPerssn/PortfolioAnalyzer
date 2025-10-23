@@ -6,8 +6,7 @@ const emit = defineEmits<{
   portfolioLoaded: [
     portfolioId: number,
     name: string,
-    holdings: Array<{ symbol: string; quantity: number }>,
-    purchaseDate: string,
+    holdings: Array<{ symbol: string; quantity: number; purchaseDate?: string }>,
   ]
   newPortfolio: []
 }>()
@@ -46,7 +45,6 @@ const loadPortfolio = async (id: number) => {
       portfolio.id,
       portfolio.name,
       portfolio.holdings,
-      portfolio.purchaseDate.split('T')[0],
     )
   }
   showDropdown.value = false

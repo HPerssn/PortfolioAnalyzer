@@ -104,12 +104,11 @@ const handleSaved = async () => {
 const handlePortfolioLoaded = (
   portfolioId: number,
   name: string,
-  holdings: Array<{ symbol: string; quantity: number }>,
-  purchaseDate: string,
+  holdings: Array<{ symbol: string; quantity: number; purchaseDate?: string }>,
 ) => {
   // Update the form with loaded portfolio data
   if (inputFormRef.value) {
-    inputFormRef.value.loadPortfolioData(portfolioId, name, holdings, purchaseDate)
+    inputFormRef.value.loadPortfolioData(portfolioId, name, holdings)
   }
   showForm.value = true
 }
@@ -182,7 +181,7 @@ onMounted(() => {
     <!-- Header -->
     <header class="header">
       <div class="header-title">
-        <h1>Portfolio</h1>
+        <h1>Slowfin</h1>
         <div class="accent-line"></div>
       </div>
       <div class="header-actions">

@@ -23,18 +23,26 @@ const emit = defineEmits<{
 
 const portfolioStore = usePortfolioStore()
 
+// Get today's date in ISO format (YYYY-MM-DD)
+const getTodayDate = (): string => {
+  const today = new Date()
+  const dateString = today.toISOString().split('T')[0]
+  return dateString || new Date().toISOString().split('T')[0] || '2024-01-01'
+}
+
+const todayDate: string = getTodayDate()
+
 interface Holding {
   symbol: string
   quantity: number
+  purchaseDate?: string // Optional - if empty, uses portfolio's default date
 }
 
 const holdings = ref<Holding[]>([
-  { symbol: 'AAPL', quantity: 10 },
-  { symbol: 'GOOGL', quantity: 5 },
-  { symbol: 'MSFT', quantity: 8 },
+  { symbol: 'AAPL', quantity: 10, purchaseDate: todayDate },
+  { symbol: 'GOOGL', quantity: 5, purchaseDate: todayDate },
+  { symbol: 'MSFT', quantity: 8, purchaseDate: todayDate },
 ])
-
-const purchaseDate = ref('2024-01-01')
 const loading = ref(false)
 const showSaveModal = ref(false)
 const portfolioName = ref('')
@@ -46,8 +54,7 @@ const loadedPortfolioName = ref<string | null>(null) // Track original name
 const loadPortfolioData = (
   portfolioId: number,
   portfolioNameValue: string,
-  loadedHoldings: Array<{ symbol: string; quantity: number }>,
-  loadedPurchaseDate: string,
+  loadedHoldings: Array<{ symbol: string; quantity: number; purchaseDate?: string }>,
 ) => {
   loadedPortfolioId.value = portfolioId
   portfolioName.value = portfolioNameValue
@@ -55,8 +62,8 @@ const loadPortfolioData = (
   holdings.value = loadedHoldings.map((h) => ({
     symbol: h.symbol,
     quantity: h.quantity,
+    purchaseDate: h.purchaseDate || todayDate,
   }))
-  purchaseDate.value = loadedPurchaseDate
 }
 
 // Clear loaded portfolio and reset to new portfolio mode
@@ -65,11 +72,10 @@ const clearLoadedPortfolio = () => {
   loadedPortfolioName.value = null
   portfolioName.value = ''
   holdings.value = [
-    { symbol: 'AAPL', quantity: 10 },
-    { symbol: 'GOOGL', quantity: 5 },
-    { symbol: 'MSFT', quantity: 8 },
+    { symbol: 'AAPL', quantity: 10, purchaseDate: todayDate },
+    { symbol: 'GOOGL', quantity: 5, purchaseDate: todayDate },
+    { symbol: 'MSFT', quantity: 8, purchaseDate: todayDate },
   ]
-  purchaseDate.value = '2024-01-01'
 }
 
 // Expose the methods to parent via defineExpose
@@ -79,7 +85,7 @@ defineExpose({
 })
 
 const addHolding = () => {
-  holdings.value.push({ symbol: '', quantity: 0 })
+  holdings.value.push({ symbol: '', quantity: 0, purchaseDate: todayDate })
 }
 
 const removeHolding = (index: number) => {
@@ -90,11 +96,28 @@ const removeHolding = (index: number) => {
 const isSymbolValid = (symbol: string) => isValidTickerSymbol(symbol)
 const isQuantityValid = (quantity: number) => isValidQuantity(quantity)
 
+// Get the earliest date from holdings (auto-generate portfolio date)
+const getPortfolioDate = (): string => {
+  const validHoldings = holdings.value.filter(
+    (h) => h.symbol.trim() !== '' && h.quantity > 0 && h.purchaseDate,
+  )
+  if (validHoldings.length === 0) return todayDate
+
+  const dateStrings = validHoldings.map((h) => h.purchaseDate as string).sort()
+  return dateStrings[0] ?? todayDate // Return the earliest (alphabetically first, which works for ISO dates)
+}
+
 // Check if form has any validation errors
 const hasValidationErrors = computed(() => {
-  return holdings.value.some(
-    (h) => h.symbol.trim() !== '' && (!isSymbolValid(h.symbol) || !isQuantityValid(h.quantity)),
-  )
+  return holdings.value.some((h) => {
+    if (h.symbol.trim() === '') return false // Empty rows are okay
+    return (
+      !isSymbolValid(h.symbol) ||
+      !isQuantityValid(h.quantity) ||
+      !h.purchaseDate || // Date is required for filled rows
+      !isValidPurchaseDate(h.purchaseDate)
+    )
+  })
 })
 
 // Check if we're editing an existing portfolio
@@ -115,16 +138,6 @@ const calculatePortfolio = async () => {
     return
   }
 
-  if (!purchaseDate.value) {
-    emit('error', 'Please select a purchase date')
-    return
-  }
-
-  if (!isValidPurchaseDate(purchaseDate.value)) {
-    emit('error', 'Please select a valid purchase date (must be in the past)')
-    return
-  }
-
   // Check for validation errors
   const errors: string[] = []
   validHoldings.forEach((h) => {
@@ -133,6 +146,11 @@ const calculatePortfolio = async () => {
     }
     if (!isQuantityValid(h.quantity)) {
       errors.push(`${h.symbol}: ${getQuantityErrorMessage(h.quantity)}`)
+    }
+    if (!h.purchaseDate) {
+      errors.push(`${h.symbol}: Please select a purchase date`)
+    } else if (!isValidPurchaseDate(h.purchaseDate)) {
+      errors.push(`${h.symbol}: Purchase date must be in the past`)
     }
   })
 
@@ -143,15 +161,17 @@ const calculatePortfolio = async () => {
 
   try {
     loading.value = true
+    const portfolioDate = getPortfolioDate()
     const holdingsToSubmit = validHoldings.map((h) => ({
       symbol: h.symbol.toUpperCase(),
       quantity: h.quantity,
+      purchaseDate: h.purchaseDate,
     }))
     const result = await portfolioService.calculatePortfolio({
       holdings: holdingsToSubmit,
-      purchaseDate: purchaseDate.value,
+      purchaseDate: portfolioDate,
     })
-    emit('calculated', result, holdingsToSubmit, purchaseDate.value)
+    emit('calculated', result, holdingsToSubmit, portfolioDate)
   } catch (err: unknown) {
     // Extract error message from API response
     const error = err as { response?: { data?: { error?: string; details?: string[] } }; message?: string }
@@ -196,6 +216,7 @@ const savePortfolio = async () => {
 
   try {
     saving.value = true
+    const portfolioDate = getPortfolioDate()
 
     // If name has changed, always save as new portfolio (clone)
     // Otherwise, update if we have an ID, or create new if we don't
@@ -204,20 +225,22 @@ const savePortfolio = async () => {
       await portfolioStore.updatePortfolio(
         loadedPortfolioId.value,
         portfolioName.value.trim(),
-        purchaseDate.value,
+        portfolioDate,
         validHoldings.map((h) => ({
           symbol: h.symbol.toUpperCase(),
           quantity: h.quantity,
+          purchaseDate: h.purchaseDate,
         })),
       )
     } else {
       // Create new portfolio (either no ID, or name changed = clone)
       await portfolioStore.savePortfolio(
         portfolioName.value.trim(),
-        purchaseDate.value,
+        portfolioDate,
         validHoldings.map((h) => ({
           symbol: h.symbol.toUpperCase(),
           quantity: h.quantity,
+          purchaseDate: h.purchaseDate,
         })),
       )
 
@@ -252,6 +275,7 @@ const savePortfolio = async () => {
         <div class="holdings-header">
           <span class="label">Symbol</span>
           <span class="label">Quantity</span>
+          <span class="label">Date</span>
           <span class="label-action"></span>
         </div>
 
@@ -281,6 +305,13 @@ const savePortfolio = async () => {
             min="0"
             step="0.01"
           />
+          <input
+            v-model="holding.purchaseDate"
+            type="date"
+            class="input date-input-row"
+            title="Purchase date for this holding"
+            max="2099-12-31"
+          />
           <button
             @click="removeHolding(index)"
             class="btn-remove"
@@ -292,17 +323,6 @@ const savePortfolio = async () => {
         </div>
 
         <button @click="addHolding" class="btn-add">+ Add Holding</button>
-      </div>
-
-      <div class="date-section">
-        <label for="purchase-date" class="label">Purchase Date</label>
-        <input
-          id="purchase-date"
-          v-model="purchaseDate"
-          type="date"
-          class="input date-input"
-          max="2099-12-31"
-        />
       </div>
 
       <div class="button-group">
@@ -471,14 +491,23 @@ const savePortfolio = async () => {
   color-scheme: light;
 }
 
+.date-input-row {
+  appearance: none;
+  background-color: white;
+  color-scheme: light;
+  font-size: var(--font-size-sm);
+}
+
 /* Remove default date picker styling */
-.date-input::-webkit-calendar-picker-indicator {
+.date-input::-webkit-calendar-picker-indicator,
+.date-input-row::-webkit-calendar-picker-indicator {
   filter: invert(50%);
   cursor: pointer;
   opacity: 0.5;
   transition: opacity 0.2s;
 }
-.date-input:hover::-webkit-calendar-picker-indicator {
+.date-input:hover::-webkit-calendar-picker-indicator,
+.date-input-row:hover::-webkit-calendar-picker-indicator {
   opacity: 0.8;
 }
 
@@ -492,7 +521,7 @@ const savePortfolio = async () => {
 
 .holdings-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 40px;
+  grid-template-columns: 2fr 1fr 1.2fr 40px;
   gap: var(--spacing-sm);
   padding: 0 var(--spacing-xs);
 }
@@ -507,7 +536,7 @@ const savePortfolio = async () => {
 
 .holding-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 40px;
+  grid-template-columns: 2fr 1fr 1.2fr 40px;
   gap: var(--spacing-sm);
   align-items: center;
 }
@@ -556,14 +585,6 @@ const savePortfolio = async () => {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: rgba(249, 115, 22, 0.03);
-}
-
-/* ---------- DATE SECTION ---------- */
-
-.date-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
 }
 
 /* ---------- BUTTON GROUP ---------- */
@@ -723,7 +744,7 @@ const savePortfolio = async () => {
 
   .holding-row,
   .holdings-header {
-    grid-template-columns: 1fr 80px 40px;
+    grid-template-columns: 1fr 70px 80px 40px;
   }
 
   .quantity-input {

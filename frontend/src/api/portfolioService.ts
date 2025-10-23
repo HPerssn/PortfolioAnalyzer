@@ -10,6 +10,7 @@ import type {
 export interface HoldingInput {
   symbol: string
   quantity: number
+  purchaseDate?: string // Optional - if not provided, uses portfolio's default date
 }
 
 export interface CalculatePortfolioRequest {
