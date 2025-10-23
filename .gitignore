@@ -147,6 +147,6 @@ coverage
 *.local
 
 # Claude Code project notes
-claude.md
+claude-2.md
+CLAUDE.md
 AZURE_SETUP.md
-

@@ -44,8 +44,8 @@ jobs:
         name: dotnet-app
         path: ./publish
 
-  # Docker deployment - Commented out for now (requires B1 tier or higher)
-  # Uncomment when ready to use Docker deployment
+  # Docker deployment - Commented out for now 
+  # # Uncomment when upgrading to b-tier in order to use Docker deployment
   # docker:
   #   runs-on: ubuntu-latest
   #   needs: build
@@ -105,5 +105,16 @@ jobs:
 
     - name: Check deployment health
       run: |
-        sleep 30
-        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/portfolio/health || exit 1
+        MAX_ATTEMPTS = 60
+        ATTEMPT = 0
+        if curl -f -m 10 -s https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/portfolio/health > /dev/null 2>&1; then
+            echo "✅ Health check passed! App is running."
+            exit 0
+          fi
+          
+          sleep 5
+        done
+        
+        echo "Health check timed out after 5 minutes"
+
+        exit 1
