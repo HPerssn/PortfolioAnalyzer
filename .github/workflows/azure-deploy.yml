@@ -105,9 +105,15 @@ jobs:
 
     - name: Check deployment health
       run: |
-        MAX_ATTEMPTS = 60
-        ATTEMPT = 0
-        if curl -f -m 10 -s https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/portfolio/health > /dev/null 2>&1; then
+        echo "⏳ Waiting for F1 tier app to start (this may take up to 5 minutes)..."
+        MAX_ATTEMPTS=60
+        ATTEMPT=0
+        
+        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+          ATTEMPT=$((ATTEMPT + 1))
+          echo "Attempt $ATTEMPT/$MAX_ATTEMPTS..."
+          
+          if curl -f -m 10 -s https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/portfolio/health > /dev/null 2>&1; then
             echo "✅ Health check passed! App is running."
             exit 0
           fi
@@ -115,6 +121,5 @@ jobs:
           sleep 5
         done
         
-        echo "Health check timed out after 5 minutes"
-
+        echo "⚠️ Health check timed out after 5 minutes."
         exit 1
